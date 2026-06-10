@@ -1,0 +1,18 @@
+# Виртуальное окружение
+.venv/
+venv/
+env/
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Переменные окружения с адресами моделей (не коммитим)
+.env
+
+# Служебные файлы IDE/ОС
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
