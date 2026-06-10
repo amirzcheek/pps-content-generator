@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генератор учебного контента для ППС</title>
+  <style>
+    /* ── Оформление: чистое, минималистичное, под портал вуза ── */
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --primary: #2356c7;
+      --primary-dark: #1a429a;
+      --text: #1f2430;
+      --muted: #6b7280;
+      --border: #dfe3ec;
+      --error: #c0392b;
+      --error-bg: #fdecea;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 20px 24px;
+    }
+    header h1 { margin: 0; font-size: 20px; }
+    header p { margin: 4px 0 0; opacity: 0.85; font-size: 13px; }
+    .wrap {
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 820px) { .wrap { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .card h2 { margin: 0 0 16px; font-size: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+    .hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+    input, select, textarea {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .buttons { margin-top: 20px; display: flex; gap: 10px; }
+    button {
+      flex: 1;
+      padding: 11px;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-ghost { background: #eef1f7; color: var(--primary); }
+    .btn-ghost:hover { background: #e1e6f2; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    #extraParams:empty { display: none; }
+    .result {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #f8f9fc;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 14px;
+      font-size: 14px;
+      min-height: 120px;
+      max-height: 60vh;
+      overflow: auto;
+    }
+    .meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .error {
+      background: var(--error-bg);
+      color: var(--error);
+      border: 1px solid #f5c6cb;
+      border-radius: 7px;
+      padding: 12px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .copy-btn {
+      margin-top: 10px;
+      flex: none;
+      padding: 7px 14px;
+      background: #eef1f7;
+      color: var(--primary);
+    }
+    .desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Генератор учебного контента для ППС</h1>
+    <p>Учебные материалы на базе локальных моделей вуза · ai.knus.edu.kz</p>
+  </header>
+
+  <div class="wrap">
+    <!-- ── Левая колонка: форма ── -->
+    <div class="card">
+      <h2>Параметры</h2>
+
+      <label for="template">Тип контента</label>
+      <select id="template"></select>
+      <div class="desc" id="templateDesc"></div>
+
+      <div class="row">
+        <div>
+          <label for="subject">Предмет <span class="hint">*</span></label>
+          <input id="subject" placeholder="напр. История Казахстана">
+        </div>
+        <div>
+          <label for="topic">Тема <span class="hint">*</span></label>
+          <input id="topic" placeholder="напр. Казахское ханство">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="level">Уровень обучения</label>
+          <input id="level" value="бакалавриат">
+        </div>
+        <div>
+          <label for="language">Язык</label>
+          <select id="language">
+            <option value="ru">Русский</option>
+            <option value="kk">Қазақша</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Динамические поля шаблона (extra_params) -->
+      <div id="extraParams"></div>
+
+      <label for="extra">Дополнительные пожелания</label>
+      <textarea id="extra" placeholder="напр. сделать упор на причинно-следственные связи"></textarea>
+
+      <div class="row">
+        <div>
+          <label for="temperature">Температура <span class="hint">(0–2)</span></label>
+          <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.7">
+        </div>
+        <div>
+          <label for="maxTokens">Макс. токенов</label>
+          <input id="maxTokens" type="number" min="1" max="8192" step="1" value="2048">
+        </div>
+      </div>
+
+      <div class="buttons">
+        <button type="button" class="btn-ghost" id="previewBtn">Предпросмотр промпта</button>
+        <button type="button" class="btn-primary" id="generateBtn">Сгенерировать</button>
+      </div>
+    </div>
+
+    <!-- ── Правая колонка: результат ── -->
+    <div class="card">
+      <h2>Результат</h2>
+      <div id="errorBox"></div>
+      <div class="meta" id="resultMeta"></div>
+      <div class="result" id="result">Заполните параметры слева и нажмите «Сгенерировать».</div>
+      <button type="button" class="copy-btn" id="copyBtn" hidden>Скопировать</button>
+    </div>
+  </div>
+
+  <script>
+    // ── Адрес backend-ядра. При размещении фронтенда и API на одном домене
+    //    оставьте пустую строку (запросы пойдут на тот же origin).
+    //    Для локальной разработки бэкенд обычно на http://127.0.0.1:8080
+    const API_BASE = (location.protocol === "file:" || location.port === "")
+      ? "http://127.0.0.1:8080"
+      : "";
+
+    const el = (id) => document.getElementById(id);
+    let templates = {}; // id -> { name, description, extra_params }
+
+    // ── Загрузка списка типов контента при старте ──
+    async function loadTemplates() {
+      try {
+        const res = await fetch(API_BASE + "/templates");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const select = el("template");
+        select.innerHTML = "";
+        data.templates.forEach((t) => {
+          templates[t.id] = t;
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = t.name;
+          select.appendChild(opt);
+        });
+        renderExtraParams();
+      } catch (e) {
+        showError("Не удалось загрузить список типов контента: " + e.message +
+                  ". Проверьте, что backend запущен (" + (API_BASE || location.origin) + ").");
+      }
+    }
+
+    // ── Динамическая отрисовка полей extra_params выбранного шаблона ──
+    function renderExtraParams() {
+      const tpl = templates[el("template").value];
+      el("templateDesc").textContent = tpl ? tpl.description : "";
+      const box = el("extraParams");
+      box.innerHTML = "";
+      if (!tpl || !tpl.extra_params) return;
+      for (const [key, hint] of Object.entries(tpl.extra_params)) {
+        const label = document.createElement("label");
+        label.innerHTML = key + ' <span class="hint">' + escapeHtml(hint) + "</span>";
+        const input = document.createElement("input");
+        input.id = "param_" + key;
+        input.dataset.param = key;
+        box.appendChild(label);
+        box.appendChild(input);
+      }
+    }
+
+    // ── Сбор тела запроса из формы ──
+    function buildPayload() {
+      const payload = {
+        template_id: el("template").value,
+        subject: el("subject").value.trim(),
+        topic: el("topic").value.trim(),
+        level: el("level").value.trim(),
+        language: el("language").value,
+        extra: el("extra").value.trim(),
+        temperature: parseFloat(el("temperature").value),
+        max_tokens: parseInt(el("maxTokens").value, 10),
+      };
+      // Необязательные параметры шаблона — только заполненные.
+      document.querySelectorAll("#extraParams input").forEach((inp) => {
+        if (inp.value.trim() !== "") payload[inp.dataset.param] = inp.value.trim();
+      });
+      return payload;
+    }
+
+    // ── Общий вызов API с обработкой ошибок 400/502 ──
+    async function callApi(path) {
+      clearError();
+      const payload = buildPayload();
+      if (!payload.subject || !payload.topic) {
+        showError("Заполните обязательные поля: предмет и тема.");
+        return null;
+      }
+      const res = await fetch(API_BASE + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = data.detail
+          ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail))
+          : ("HTTP " + res.status);
+        showError("Ошибка " + res.status + ": " + detail);
+        return null;
+      }
+      return data;
+    }
+
+    // ── Предпросмотр собранного промпта (без вызова модели) ──
+    async function preview() {
+      setBusy("previewBtn", true);
+      try {
+        const data = await callApi("/preview");
+        if (!data) return;
+        const text = data.messages
+          .map((m) => "[" + m.role.toUpperCase() + "]\n" + m.content)
+          .join("\n\n");
+        el("resultMeta").textContent = "Предпросмотр промпта (модель не вызывалась)";
+        showResult(text);
+      } finally {
+        setBusy("previewBtn", false);
+      }
+    }
+
+    // ── Полная генерация ──
+    async function generate() {
+      setBusy("generateBtn", true);
+      el("resultMeta").textContent = "";
+      try {
+        const data = await callApi("/generate");
+        if (!data) return;
+        el("resultMeta").textContent =
+          "Модель: " + data.model + " · язык: " + data.language;
+        showResult(data.content);
+      } finally {
+        setBusy("generateBtn", false);
+      }
+    }
+
+    // ── Вспомогательные функции UI ──
+    function showResult(text) {
+      el("result").textContent = text;
+      el("copyBtn").hidden = !text;
+    }
+    function showError(msg) {
+      el("errorBox").innerHTML = '<div class="error">' + escapeHtml(msg) + "</div>";
+    }
+    function clearError() { el("errorBox").innerHTML = ""; }
+    function setBusy(btnId, busy) {
+      const labels = { previewBtn: "Предпросмотр промпта", generateBtn: "Сгенерировать" };
+      el("previewBtn").disabled = busy;
+      el("generateBtn").disabled = busy;
+      el(btnId).innerHTML = busy
+        ? '<span class="spinner"></span>' + (btnId === "generateBtn" ? "Генерация…" : "Сборка…")
+        : labels[btnId];
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // ── Обработчики ──
+    el("template").addEventListener("change", renderExtraParams);
+    el("previewBtn").addEventListener("click", preview);
+    el("generateBtn").addEventListener("click", generate);
+    el("copyBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(el("result").textContent);
+      el("copyBtn").textContent = "Скопировано ✓";
+      setTimeout(() => (el("copyBtn").textContent = "Скопировать"), 1500);
+    });
+
+    loadTemplates();
+  </script>
+</body>
+</html>
