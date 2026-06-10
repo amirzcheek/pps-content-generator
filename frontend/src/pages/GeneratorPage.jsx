@@ -10,6 +10,21 @@ const LANGUAGES = [
   { value: "en", label: "English" },
 ];
 
+// Русские подписи для необязательных параметров шаблонов (ключи из templates.json).
+const PARAM_LABELS = {
+  count: "Количество",
+  options: "Варианты ответа",
+  difficulty: "Сложность",
+  depth: "Глубина",
+  with_solutions: "С решениями",
+  context: "Контекст",
+  duration: "Длительность",
+  format: "Формат",
+  work_type: "Тип работы",
+  scale: "Шкала",
+  length: "Объём",
+};
+
 export default function GeneratorPage() {
   const { templateId } = useParams();
 
@@ -181,7 +196,7 @@ export default function GeneratorPage() {
 
           {/* Динамические поля шаблона */}
           {Object.entries(template.extra_params || {}).map(([key, hint]) => (
-            <Field key={key} label={key} hint={hint}>
+            <Field key={key} label={PARAM_LABELS[key] ?? key} hint={hint}>
               <input
                 value={extraParams[key] ?? ""}
                 onChange={(e) => setExtra(key, e.target.value)}
