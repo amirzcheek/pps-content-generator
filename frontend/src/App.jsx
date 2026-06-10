@@ -9,7 +9,12 @@ export default function App() {
           <Link to="/" className="app-header__title">
             Генератор учебного контента для ППС
           </Link>
-          <span className="app-header__sub">ai.knus.edu.kz</span>
+          <a
+            href="https://ai.knus.edu.kz/"
+            className="app-header__portal"
+          >
+            ← Вернуться на портал
+          </a>
         </div>
       </header>
       <main className="app-main">

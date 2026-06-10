@@ -30,25 +30,37 @@ a {
 
 /* ── Шапка ── */
 .app-header {
-  background: var(--primary);
-  color: #fff;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
 }
 .app-header__inner {
   max-width: 1040px;
   margin: 0 auto;
-  padding: 18px 20px;
+  padding: 16px 20px;
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
 .app-header__title {
-  color: #fff;
+  color: var(--text);
   font-size: 18px;
   font-weight: 700;
 }
-.app-header__sub {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
+.app-header__portal {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.app-header__portal:hover {
+  background: #eef1f7;
+  border-color: var(--primary);
 }
 
 .app-main {
