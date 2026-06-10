@@ -38,9 +38,35 @@
 
 ## Установка
 
+Рекомендуется ставить зависимости в **виртуальное окружение** — оно изолирует
+библиотеки проекта от системного Python и не требует прав на запись в глобальный
+каталог. Создаётся один раз.
+
+**Linux / macOS:**
+
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+**Windows (PowerShell):**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+После активации в начале строки терминала появляется `(.venv)`. Все команды ниже
+(`uvicorn`, `python generator.py`) выполняются внутри активированного окружения.
+Выйти из него — командой `deactivate`.
+
+Каталог `.venv/` уже добавлен в `.gitignore` и не попадает в репозиторий.
+
+> Без виртуального окружения можно поставить зависимости и глобально
+> (`pip install -r requirements.txt`), но на Windows это иногда упирается в
+> блокировку файлов в `Scripts\` — venv эту проблему снимает.
 
 ## Переменные окружения
 
