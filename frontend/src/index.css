@@ -1,0 +1,243 @@
+/* ── Тема ── */
+:root {
+  --bg: #f4f6fb;
+  --card: #ffffff;
+  --primary: #2356c7;
+  --primary-dark: #1a429a;
+  --text: #1f2430;
+  --muted: #6b7280;
+  --border: #dfe3ec;
+  --error: #c0392b;
+  --error-bg: #fdecea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+/* ── Шапка ── */
+.app-header {
+  background: var(--primary);
+  color: #fff;
+}
+.app-header__inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.app-header__title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+}
+.app-header__sub {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+}
+
+.app-main {
+  max-width: 1040px;
+  margin: 28px auto;
+  padding: 0 20px;
+}
+
+/* ── Заголовки страниц ── */
+.page-title {
+  font-size: 22px;
+  margin: 12px 0 4px;
+}
+.page-subtitle {
+  margin: 0 0 20px;
+}
+.muted {
+  color: var(--muted);
+}
+
+/* ── Карточки на главной ── */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.card-link {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  color: var(--text);
+  transition: border-color 0.15s, transform 0.1s;
+}
+.card-link:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+.card-link h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--primary-dark);
+}
+.card-link p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── Страница генератора ── */
+.back-link {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+.card-title {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Поля формы ── */
+.field {
+  display: block;
+  margin: 12px 0 0;
+}
+.field__label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.field__hint {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--text);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+textarea {
+  resize: vertical;
+}
+
+/* ── Кнопки ── */
+.buttons {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+}
+.btn {
+  padding: 11px 14px;
+  border: none;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn-primary {
+  flex: 1;
+  background: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+.btn-ghost {
+  flex: 1;
+  background: #eef1f7;
+  color: var(--primary);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: #e1e6f2;
+}
+.btn-copy {
+  margin-top: 10px;
+  background: #eef1f7;
+  color: var(--primary);
+}
+
+/* ── Результат ── */
+.result {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #f8f9fc;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 14px;
+  font-size: 14px;
+  min-height: 120px;
+  max-height: 62vh;
+  overflow: auto;
+}
+.result-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+/* ── Ошибка ── */
+.error {
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid #f5c6cb;
+  border-radius: 7px;
+  padding: 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
