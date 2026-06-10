@@ -19,13 +19,27 @@
 7. Учебный конспект
 8. Глоссарий
 
-## Архитектура
+## Структура проекта
 
-| Файл | Назначение |
-|------|------------|
-| `templates.json` | Библиотека промптов (редактируется методистами) |
-| `generator.py` | Ядро: загрузка шаблонов, сборка промптов, выбор модели, вызов API |
-| `app.py` | HTTP-API на FastAPI поверх ядра |
+```
+content_generator/
+├── backend/                 # HTTP-ядро (FastAPI + локальные модели)
+│   ├── app.py               #   HTTP-API поверх ядра
+│   ├── generator.py         #   ядро: шаблоны, сборка промптов, выбор модели, вызов API
+│   ├── templates.json       #   библиотека промптов (редактируется методистами)
+│   └── requirements.txt
+├── frontend/                # веб-интерфейс (Vite + React + react-router-dom)
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.js
+└── README.md
+```
+
+| Компонент | Назначение |
+|-----------|------------|
+| `backend/templates.json` | Библиотека промптов (редактируется методистами) |
+| `backend/generator.py` | Ядро: загрузка шаблонов, сборка промптов, выбор модели, вызов API |
+| `backend/app.py` | HTTP-API на FastAPI поверх ядра |
 | `frontend/` | Веб-интерфейс: Vite + React + react-router-dom (для портала ai.knus.edu.kz) |
 
 ### Маршрутизация по языку
@@ -46,6 +60,7 @@
 **Linux / macOS:**
 
 ```bash
+cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -54,14 +69,15 @@ pip install -r requirements.txt
 **Windows (PowerShell):**
 
 ```powershell
+cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
 После активации в начале строки терминала появляется `(.venv)`. Все команды ниже
-(`uvicorn`, `python generator.py`) выполняются внутри активированного окружения.
-Выйти из него — командой `deactivate`.
+(`uvicorn`, `python generator.py`) выполняются из каталога `backend/` внутри
+активированного окружения. Выйти из него — командой `deactivate`.
 
 Каталог `.venv/` уже добавлен в `.gitignore` и не попадает в репозиторий.
 
@@ -99,6 +115,7 @@ $env:KAZ_MODEL    = "KazLLM-8B"
 ## Запуск
 
 ```bash
+cd backend
 uvicorn app:app --host 0.0.0.0 --port 8080
 ```
 
@@ -107,6 +124,7 @@ uvicorn app:app --host 0.0.0.0 --port 8080
 ### Офлайн-проверка без модели
 
 ```bash
+cd backend
 python3 generator.py
 ```
 
@@ -135,10 +153,11 @@ python3 generator.py
 ### Локальная разработка
 
 ```bash
-# 1. backend (в корне проекта)
+# 1. backend
+cd backend
 uvicorn app:app --port 8080
 
-# 2. frontend (в каталоге frontend/)
+# 2. frontend (в отдельном терминале)
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
