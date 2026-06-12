@@ -6,7 +6,7 @@ const STRINGS = {
   ru: {
     agent_name: "Генератор контента",
     admin: "Админка",
-    logout: "Выйти",
+    to_portal: "Вернуться на портал",
     home_title: "Генератор учебного контента",
     home_subtitle:
       "Выберите тип материала. Тексты создаются на локальных моделях вуза.",
@@ -18,7 +18,7 @@ const STRINGS = {
   kk: {
     agent_name: "Контент генераторы",
     admin: "Әкімші панелі",
-    logout: "Шығу",
+    to_portal: "Порталға оралу",
     home_title: "Оқу контентін генераторы",
     home_subtitle:
       "Материал түрін таңдаңыз. Мәтіндер университеттің жергілікті модельдерінде жасалады.",
@@ -30,7 +30,7 @@ const STRINGS = {
   en: {
     agent_name: "Content Generator",
     admin: "Admin panel",
-    logout: "Sign out",
+    to_portal: "Back to portal",
     home_title: "Learning Content Generator",
     home_subtitle:
       "Choose a material type. Texts are produced by the university's local models.",

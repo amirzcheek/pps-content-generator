@@ -55,8 +55,8 @@ export default function Navbar() {
             {t("admin")}
           </a>
         )}
-        <a className="logout-btn" href={`${PORTAL}/api/auth/logout`}>
-          {t("logout")}
+        <a className="logout-btn" href={`${PORTAL}/`}>
+          {t("to_portal")}
         </a>
       </div>
     </header>
