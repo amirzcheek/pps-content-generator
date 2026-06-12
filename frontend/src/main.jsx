@@ -5,6 +5,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import GeneratorPage from "./pages/GeneratorPage.jsx";
+import { LanguageProvider } from "./i18n/LanguageContext.jsx";
 import "./index.css";
 
 // Маршруты приложения. App — общий layout (шапка + <Outlet/>).
@@ -21,6 +22,8 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <LanguageProvider>
+      <RouterProvider router={router} />
+    </LanguageProvider>
   </React.StrictMode>
 );

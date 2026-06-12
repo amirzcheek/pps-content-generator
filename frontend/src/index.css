@@ -1,121 +1,205 @@
-/* ── Тема ── */
+/* ── Дизайн-токены портала ai.knus.edu.kz ── */
 :root {
-  --bg: #f4f6fb;
+  --bg: #f0f2f5;
   --card: #ffffff;
-  --primary: #2356c7;
-  --primary-dark: #1a429a;
-  --text: #1f2430;
-  --muted: #6b7280;
-  --border: #dfe3ec;
+  --line: #e2e6ec;
+  --line-soft: #edf0f4;
+  --text: #111827;
+  --sub: #5b6578;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #eff4ff;
   --error: #c0392b;
   --error-bg: #fdecea;
+  --r: 14px;
+  --r-lg: 20px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.03);
 }
 
 * {
   box-sizing: border-box;
+  margin: 0;
 }
 
 body {
-  margin: 0;
-  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  background: var(--bg);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   color: var(--text);
+  background: var(--bg);
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
-  color: var(--primary);
+  color: var(--accent);
   text-decoration: none;
 }
 
-/* ── Шапка ── */
-.app-header {
-  background: #fff;
-  border-bottom: 1px solid var(--border);
+/* ── Каркас (как на портале) ── */
+.page {
+  min-height: 100vh;
+  padding: 0 16px 48px;
 }
-.app-header__inner {
-  max-width: 1040px;
+.wrap {
+  max-width: 960px;
   margin: 0 auto;
-  padding: 16px 20px;
+}
+
+/* ── TOPBAR (навбар портала) ── */
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 14px 0;
+  margin-bottom: 8px;
   gap: 12px;
 }
-.app-header__title {
-  color: var(--text);
-  font-size: 18px;
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand {
   font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  letter-spacing: -0.02em;
 }
-.app-header__portal {
-  display: inline-block;
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  font-size: 14px;
+.brand-sep {
+  color: var(--line);
+  font-size: 15px;
+}
+.brand-agent {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #f7f9fc;
+  border: 1px solid var(--line);
+}
+.lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--sub);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.lang-btn.active {
+  background: #fff;
+  color: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--sub);
+}
+.user-name {
   font-weight: 600;
-  color: var(--primary);
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
+  color: var(--text);
 }
-.app-header__portal:hover {
-  background: #eef1f7;
-  border-color: var(--primary);
+.logout-btn {
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--sub);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.logout-btn:hover {
+  background: #f8f9fb;
+}
+.admin-link {
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-link:hover {
+  background: #dfeaff;
 }
 
-.app-main {
-  max-width: 1040px;
-  margin: 28px auto;
-  padding: 0 20px;
-}
-
-/* ── Заголовки страниц ── */
+/* ── Заголовки страниц / hero ── */
 .page-title {
-  font-size: 22px;
-  margin: 12px 0 4px;
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 28px 0 8px;
 }
 .page-subtitle {
-  margin: 0 0 20px;
+  color: var(--sub);
+  font-size: 15px;
+  max-width: 560px;
+  line-height: 1.6;
+  margin-bottom: 24px;
 }
 .muted {
-  color: var(--muted);
+  color: var(--sub);
 }
 
-/* ── Карточки на главной ── */
+/* ── Карточки типов (в стиле agent-card портала) ── */
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 .card-link {
-  display: block;
+  display: flex;
+  flex-direction: column;
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  box-shadow: var(--shadow);
   color: var(--text);
-  transition: border-color 0.15s, transform 0.1s;
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
 .card-link:hover {
-  border-color: var(--primary);
-  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(37, 99, 235, 0.06);
 }
 .card-link h3 {
-  margin: 0 0 6px;
-  font-size: 16px;
-  color: var(--primary-dark);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
 }
 .card-link p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted);
+  color: var(--sub);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 /* ── Страница генератора ── */
 .back-link {
   display: inline-block;
-  margin-bottom: 8px;
+  margin: 8px 0;
   font-size: 14px;
+  font-weight: 600;
 }
 .layout {
   display: grid;
@@ -130,13 +214,15 @@ a {
 
 .card {
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  box-shadow: var(--shadow);
 }
 .card-title {
-  margin: 0 0 14px;
+  margin-bottom: 14px;
   font-size: 16px;
+  font-weight: 700;
 }
 
 .grid-2 {
@@ -148,7 +234,7 @@ a {
 /* ── Поля формы ── */
 .field {
   display: block;
-  margin: 12px 0 0;
+  margin-top: 12px;
 }
 .field__label {
   display: block;
@@ -158,16 +244,16 @@ a {
 }
 .field__hint {
   font-weight: 400;
-  color: var(--muted);
+  color: var(--sub);
   font-size: 12px;
 }
 input,
 select,
 textarea {
   width: 100%;
-  padding: 9px 11px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   font-size: 14px;
   font-family: inherit;
   background: #fff;
@@ -177,7 +263,8 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 textarea {
   resize: vertical;
@@ -190,11 +277,12 @@ textarea {
   gap: 10px;
 }
 .btn {
-  padding: 11px 14px;
+  padding: 11px 16px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--r);
+  font: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s;
 }
@@ -204,24 +292,24 @@ textarea {
 }
 .btn-primary {
   flex: 1;
-  background: var(--primary);
+  background: var(--accent);
   color: #fff;
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-dark);
+  background: var(--accent-hover);
 }
 .btn-ghost {
   flex: 1;
-  background: #eef1f7;
-  color: var(--primary);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: #e1e6f2;
+  background: #dfeaff;
 }
 .btn-copy {
   margin-top: 10px;
-  background: #eef1f7;
-  color: var(--primary);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* ── Результат ── */
@@ -229,8 +317,8 @@ textarea {
   white-space: pre-wrap;
   word-wrap: break-word;
   background: #f8f9fc;
-  border: 1px solid var(--border);
-  border-radius: 7px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   padding: 14px;
   font-size: 14px;
   min-height: 120px;
@@ -239,7 +327,7 @@ textarea {
 }
 .result-meta {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--sub);
   margin-bottom: 8px;
 }
 
@@ -248,8 +336,26 @@ textarea {
   background: var(--error-bg);
   color: var(--error);
   border: 1px solid #f5c6cb;
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 12px;
   font-size: 13px;
   margin-bottom: 12px;
+}
+
+/* ── Мобильная адаптация (как на портале) ── */
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+  .topbar-right .user-name {
+    display: none;
+  }
+  .brand-sep,
+  .brand-agent {
+    display: none;
+  }
+  .topbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

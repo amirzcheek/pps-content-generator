@@ -2,13 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getTemplates, preview, generate } from "../api.js";
-
-// Базовые поля формы (общие для всех шаблонов).
-const LANGUAGES = [
-  { value: "ru", label: "Русский" },
-  { value: "kk", label: "Қазақша" },
-  { value: "en", label: "English" },
-];
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 // Русские подписи для необязательных параметров шаблонов (ключи из templates.json).
 const PARAM_LABELS = {
@@ -27,6 +21,8 @@ const PARAM_LABELS = {
 
 export default function GeneratorPage() {
   const { templateId } = useParams();
+  // Язык генерации берётся из переключателя в навбаре (общий с интерфейсом).
+  const { lang, t } = useLanguage();
 
   const [template, setTemplate] = useState(null);
   const [loadError, setLoadError] = useState("");
@@ -36,7 +32,6 @@ export default function GeneratorPage() {
     subject: "",
     topic: "",
     level: "бакалавриат",
-    language: "ru",
     extra: "",
     temperature: 0.7,
     max_tokens: 2048,
@@ -78,16 +73,16 @@ export default function GeneratorPage() {
   const setExtra = (name, value) =>
     setExtraParams((p) => ({ ...p, [name]: value }));
 
-  // Сборка тела запроса: базовые поля + непустые доп.параметры.
+  // Сборка тела запроса: базовые поля + язык из навбара + непустые доп.параметры.
   const payload = useMemo(() => {
-    const body = { template_id: templateId, ...form };
+    const body = { template_id: templateId, ...form, language: lang };
     body.temperature = parseFloat(form.temperature);
     body.max_tokens = parseInt(form.max_tokens, 10);
     for (const [k, v] of Object.entries(extraParams)) {
       if (String(v).trim() !== "") body[k] = v;
     }
     return body;
-  }, [templateId, form, extraParams]);
+  }, [templateId, form, extraParams, lang]);
 
   const validate = () => {
     if (!form.subject.trim() || !form.topic.trim()) {
@@ -141,7 +136,7 @@ export default function GeneratorPage() {
     return (
       <div>
         <div className="error">{loadError}</div>
-        <Link to="/" className="back-link">← К списку типов</Link>
+        <Link to="/" className="back-link">{t("back_to_list")}</Link>
       </div>
     );
 
@@ -149,7 +144,7 @@ export default function GeneratorPage() {
 
   return (
     <div>
-      <Link to="/" className="back-link">← К списку типов</Link>
+      <Link to="/" className="back-link">{t("back_to_list")}</Link>
       <h1 className="page-title">{template.name}</h1>
       <p className="muted page-subtitle">{template.description}</p>
 
@@ -173,26 +168,12 @@ export default function GeneratorPage() {
             </Field>
           </div>
 
-          <div className="grid-2">
-            <Field label="Уровень обучения">
-              <input
-                value={form.level}
-                onChange={(e) => setField("level", e.target.value)}
-              />
-            </Field>
-            <Field label="Язык">
-              <select
-                value={form.language}
-                onChange={(e) => setField("language", e.target.value)}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
+          <Field label="Уровень обучения">
+            <input
+              value={form.level}
+              onChange={(e) => setField("level", e.target.value)}
+            />
+          </Field>
 
           {/* Динамические поля шаблона */}
           {Object.entries(template.extra_params || {}).map(([key, hint]) => (
