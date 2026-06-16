@@ -131,76 +131,130 @@ def build_messages(template_id, params):
     ]
 
 
-# Модель по умолчанию. Имя модели ВСЕГДА передаётся в запросе явно — иначе шлюз
-# подставляет дорогую модель. По согласованию с руководством используем дешёвую
-# gemini-3.1-flash-lite. Переопределяется через LLM_MODEL / KAZ_MODEL.
-DEFAULT_MODEL = "gemini-3.1-flash-lite"
+# Резервная (облачная) модель — Gemini. Используется, когда локальная модель
+# недоступна, и для ресёрч-запросов (prefer_fallback=True). Имя модели всегда
+# передаётся явно — иначе шлюз берёт дорогую по умолчанию.
+DEFAULT_FALLBACK_MODEL = "gemini-3.1-flash-lite"
 
 
 def pick_model(language):
-    """Выбирает параметры подключения к модели по языку.
+    """Параметры ОСНОВНОЙ (локальной) модели по языку.
 
     Маршрутизация:
-      - kk      -> KAZ_* (если заданы), иначе общий эндпоинт LLM_* (модель мультиязычна),
+      - kk      -> KAZ_* (если заданы), иначе общий эндпоинт LLM_*,
       - ru / en -> LLM_*.
 
-    Имя модели берётся из env, а при его отсутствии — DEFAULT_MODEL, чтобы запрос
-    НИКОГДА не уходил без явно указанной (дешёвой) модели.
+    Если эндпоинт/модель не заданы — поля будут None (тогда генерация уйдёт
+    на резервную модель, см. generate()).
 
     :return: словарь {base_url, model, api_key}.
     """
     language = (language or "ru").strip().lower()
 
     if language == "kk":
-        # Казахский: отдельный эндпоинт, если задан; иначе тот же LLM-эндпоинт.
         base_url = os.getenv("KAZ_BASE_URL") or os.getenv("LLM_BASE_URL")
-        model = os.getenv("KAZ_MODEL") or os.getenv("LLM_MODEL") or DEFAULT_MODEL
+        model = os.getenv("KAZ_MODEL") or os.getenv("LLM_MODEL")
         api_key = os.getenv("KAZ_API_KEY") or os.getenv("LLM_API_KEY", "not-needed")
     else:
         base_url = os.getenv("LLM_BASE_URL")
-        model = os.getenv("LLM_MODEL") or DEFAULT_MODEL
+        model = os.getenv("LLM_MODEL")
         api_key = os.getenv("LLM_API_KEY", "not-needed")
-
-    if not base_url:
-        raise RuntimeError(
-            f"Не задан адрес модели LLM_BASE_URL (язык: {language}). Проверьте .env."
-        )
 
     return {"base_url": base_url, "model": model, "api_key": api_key}
 
 
-def generate(template_id, params, temperature=0.7, max_tokens=2048):
-    """Полный цикл генерации: собирает промпт, выбирает модель по языку и
-    вызывает OpenAI-совместимый API.
+def pick_fallback_model():
+    """Параметры РЕЗЕРВНОЙ (облачной) модели Gemini.
 
-    :return: словарь с текстом ответа и метаданными (использованная модель, язык).
-    :raises ValueError: при ошибках параметров (отдаётся как 400 в app.py).
-    :raises RuntimeError: при ошибках модели/сети (отдаётся как 502 в app.py).
+    Имя модели — из FALLBACK_MODEL, по умолчанию gemini-3.1-flash-lite.
+    Если FALLBACK_BASE_URL не задан — резерва нет.
+
+    :return: словарь {base_url, model, api_key}.
     """
-    # Импорт здесь, чтобы офлайн-демо и сборка промпта работали без библиотеки openai.
+    return {
+        "base_url": os.getenv("FALLBACK_BASE_URL"),
+        "model": os.getenv("FALLBACK_MODEL", DEFAULT_FALLBACK_MODEL),
+        "api_key": os.getenv("FALLBACK_API_KEY", "not-needed"),
+    }
+
+
+def _call_model(cfg, messages, temperature, max_tokens):
+    """Один вызов OpenAI-совместимого API. Имя модели передаётся ЯВНО."""
     from openai import OpenAI
 
+    client = OpenAI(base_url=cfg["base_url"], api_key=cfg["api_key"])
+    response = client.chat.completions.create(
+        model=cfg["model"],
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    return response.choices[0].message.content
+
+
+def generate(template_id, params, temperature=0.7, max_tokens=2048,
+             prefer_fallback=False):
+    """Полный цикл генерации с резервированием.
+
+    Порядок: ОСНОВНАЯ (локальная) модель -> при сбое РЕЗЕРВНАЯ (Gemini).
+    Если prefer_fallback=True (например, ресёрч-запрос) — сразу Gemini, а
+    локальная остаётся как запасной вариант.
+
+    :return: словарь с текстом, использованной моделью, языком и источником
+        ("основная"/"резервная").
+    :raises ValueError: при ошибках параметров (отдаётся как 400 в app.py).
+    :raises RuntimeError: если все эндпоинты недоступны (отдаётся как 502).
+    """
     messages = build_messages(template_id, params)
     language = (params.get("language") or "ru").strip().lower()
-    model_cfg = pick_model(language)
 
-    client = OpenAI(base_url=model_cfg["base_url"], api_key=model_cfg["api_key"])
+    primary = pick_model(language)
+    fallback = pick_fallback_model()
 
-    try:
-        response = client.chat.completions.create(
-            model=model_cfg["model"],
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
+    # Кандидат пригоден, только если заданы и адрес, и имя модели
+    # (иначе шлюз получил бы пустую модель и взял дорогую по умолчанию).
+    primary_ok = bool(primary["base_url"] and primary["model"])
+    fallback_ok = bool(fallback["base_url"] and fallback["model"])
+
+    primary_attempt = ("основная", primary)
+    fallback_attempt = ("резервная", fallback)
+
+    # Порядок попыток.
+    attempts = []
+    if prefer_fallback:
+        if fallback_ok:
+            attempts.append(fallback_attempt)
+        if primary_ok:
+            attempts.append(primary_attempt)
+    else:
+        if primary_ok:
+            attempts.append(primary_attempt)
+        if fallback_ok:
+            attempts.append(fallback_attempt)
+
+    if not attempts:
+        raise RuntimeError(
+            "Не настроен ни основной (LLM_BASE_URL + LLM_MODEL), ни резервный "
+            "(FALLBACK_BASE_URL) эндпоинт. Проверьте .env."
         )
-    except Exception as exc:  # noqa: BLE001 — оборачиваем любую ошибку клиента/сети.
-        raise RuntimeError(f"Ошибка обращения к модели: {exc}") from exc
 
-    return {
-        "content": response.choices[0].message.content,
-        "model": model_cfg["model"],
-        "language": language,
-    }
+    last_error = None
+    for source, cfg in attempts:
+        try:
+            content = _call_model(cfg, messages, temperature, max_tokens)
+            return {
+                "content": content,
+                "model": cfg["model"],
+                "language": language,
+                "source": source,
+            }
+        except Exception as exc:  # noqa: BLE001 — пробуем следующий эндпоинт.
+            last_error = exc
+            continue
+
+    raise RuntimeError(
+        f"Все эндпоинты недоступны. Последняя ошибка: {last_error}"
+    )
 
 
 if __name__ == "__main__":

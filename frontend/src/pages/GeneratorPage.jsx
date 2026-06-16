@@ -117,7 +117,8 @@ export default function GeneratorPage() {
     setResultMeta("");
     try {
       const data = await generate(payload);
-      setResultMeta(`Модель: ${data.model} · язык: ${data.language}`);
+      const src = data.source ? ` · ${data.source}` : "";
+      setResultMeta(`Модель: ${data.model} · язык: ${data.language}${src}`);
       setResult(data.content);
     } catch (e) {
       setError(`Ошибка ${e.status ?? ""}: ${e.message}`);

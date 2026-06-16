@@ -78,6 +78,11 @@ class GenerateRequest(BaseModel):
     # Параметры вызова модели (для /generate).
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Креативность")
     max_tokens: int = Field(2048, gt=0, le=8192, description="Лимит токенов ответа")
+    prefer_fallback: bool = Field(
+        False,
+        description="Сразу использовать резервную модель Gemini "
+                    "(например, для ресёрч-запросов). По умолчанию — локальная.",
+    )
 
 
 def _to_params(req: GenerateRequest) -> dict:
@@ -86,6 +91,7 @@ def _to_params(req: GenerateRequest) -> dict:
     params = req.model_dump()
     params.pop("temperature", None)
     params.pop("max_tokens", None)
+    params.pop("prefer_fallback", None)
     return params
 
 
@@ -121,6 +127,7 @@ def generate(req: GenerateRequest):
             _to_params(req),
             temperature=req.temperature,
             max_tokens=req.max_tokens,
+            prefer_fallback=req.prefer_fallback,
         )
     except ValueError as exc:
         # Неверные параметры запроса.

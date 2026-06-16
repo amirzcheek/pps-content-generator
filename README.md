@@ -42,16 +42,23 @@ content_generator/
 | `backend/app.py` | HTTP-API на FastAPI поверх ядра |
 | `frontend/` | Веб-интерфейс: Vite + React + react-router-dom (для портала ai.knus.edu.kz) |
 
-### Маршрутизация по языку
+### Модели и резервирование
 
-| `language` | Модель |
-|-----------|--------|
-| `ru`, `en` | `gemini-3.1-flash-lite` через OpenAI-совместимый шлюз (`LLM_*`) |
-| `kk` | `KAZ_*`, если заданы; иначе тот же шлюз `LLM_*` (модель мультиязычна) |
+Основная — **локальная** модель; **резервная** — облачная **Gemini**
+(`gemini-3.1-flash-lite`). Если локальная недоступна, генерация автоматически
+переключается на Gemini. Для ресёрч-запросов можно сразу брать Gemini
+(`prefer_fallback: true` в `POST /generate`).
 
-Адреса и ключи задаются **только** через переменные окружения. Имя модели
-(`LLM_MODEL`) **всегда передаётся в запрос явно** — иначе шлюз подставляет дорогую
-модель; значение по умолчанию — `gemini-3.1-flash-lite`.
+| Назначение | Переменные | Когда используется |
+|-----------|-----------|--------------------|
+| Основная (локальная), ru/en | `LLM_*` | в первую очередь |
+| Казахский | `KAZ_*` (или `LLM_*`, если пусто) | для `kk` |
+| Резервная (Gemini) | `FALLBACK_*` | если основная недоступна / `prefer_fallback` |
+
+Адреса и ключи — **только** через переменные окружения. Имя модели **всегда
+передаётся явно** (иначе шлюз берёт дорогую по умолчанию); резервная по умолчанию —
+`gemini-3.1-flash-lite`. Ответ `/generate` содержит поле `source` —
+`основная` или `резервная`.
 
 ## Установка
 
@@ -90,27 +97,33 @@ pip install -r requirements.txt
 ## Переменные окружения
 
 ```bash
-# LLM (ru/en, OpenAI-совместимый шлюз)
+# Основная (локальная) модель, ru/en. Пусто -> всё идёт на резервную Gemini.
 export LLM_BASE_URL="http://10.99.99.201:8000/v1"
-export LLM_MODEL="gemini-3.1-flash-lite"   # ОБЯЗАТЕЛЬНО дешёвая модель, явно
-export LLM_API_KEY="not-needed"            # для Gemini — реальный ключ шлюза
+export LLM_MODEL="<имя локальной модели>"   # передаётся явно
+export LLM_API_KEY="not-needed"
 
-# Казахский (необязательно) — только если для kk будет отдельный эндпоинт.
-# При пустых KAZ_* казахский идёт на тот же LLM-шлюз с той же моделью.
+# Казахский (необязательно) — отдельный эндпоинт; пусто -> как LLM_*/резерв.
 export KAZ_BASE_URL=""
 export KAZ_MODEL=""
 export KAZ_API_KEY=""
 
+# Резервная (облачная) модель — Gemini.
+export FALLBACK_BASE_URL="https://<gemini-шлюз>/v1"
+export FALLBACK_MODEL="gemini-3.1-flash-lite"
+export FALLBACK_API_KEY="<ключ>"
+
 # CORS — домены веб-интерфейса, которым разрешены запросы из браузера.
-# Несколько доменов — через запятую. По умолчанию: https://ai.knus.edu.kz
 export CORS_ORIGINS="https://ai.knus.edu.kz"
 ```
 
 В PowerShell (Windows):
 
 ```powershell
-$env:LLM_BASE_URL = "http://10.99.99.201:8000/v1"
-$env:LLM_MODEL    = "gemini-3.1-flash-lite"
+$env:LLM_BASE_URL      = "http://10.99.99.201:8000/v1"
+$env:LLM_MODEL         = "<имя локальной модели>"
+$env:FALLBACK_BASE_URL = "https://<gemini-шлюз>/v1"
+$env:FALLBACK_MODEL    = "gemini-3.1-flash-lite"
+$env:FALLBACK_API_KEY  = "<ключ>"
 ```
 
 ## Запуск
