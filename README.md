@@ -98,7 +98,7 @@ pip install -r requirements.txt
 
 ```bash
 # Основная (локальная) модель, ru/en. Пусто -> всё идёт на резервную Gemini.
-export LLM_BASE_URL="http://10.99.99.201:8000/v1"
+export LLM_BASE_URL="http://<ollama-хост>:11434/v1"
 export LLM_MODEL="<имя локальной модели>"   # передаётся явно
 export LLM_API_KEY="not-needed"
 
@@ -119,7 +119,7 @@ export CORS_ORIGINS="https://ai.knus.edu.kz"
 В PowerShell (Windows):
 
 ```powershell
-$env:LLM_BASE_URL      = "http://10.99.99.201:8000/v1"
+$env:LLM_BASE_URL      = "http://<ollama-хост>:11434/v1"
 $env:LLM_MODEL         = "<имя локальной модели>"
 $env:FALLBACK_BASE_URL = "https://<gemini-шлюз>/v1"
 $env:FALLBACK_MODEL    = "gemini-3.1-flash-lite"
