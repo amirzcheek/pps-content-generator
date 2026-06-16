@@ -1,0 +1,18 @@
+# Развёртывание сервиса генератора учебного контента через Docker.
+# Запуск:  docker compose up -d --build
+services:
+  content-gen:
+    build: .
+    container_name: content-gen
+    restart: unless-stopped
+    # Переменные окружения (адреса моделей и т.п.) — из .env (см. .env.example).
+    env_file: .env
+    # Порт виден ТОЛЬКО на localhost web-сервера. Наружу — через nginx.
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    # Если локальная LLM (14b) крутится на ТОМ ЖЕ хосте, что и Docker, то изнутри
+    # контейнера её адрес — host.docker.internal. Раскомментируйте строки ниже и
+    # в .env укажите, например, LLM_BASE_URL=http://host.docker.internal:11434/v1
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"

@@ -1,0 +1,16 @@
+# В образ нужен только backend/. Исключаем всё лишнее.
+.git
+.gitignore
+.claude
+__pycache__
+**/__pycache__
+**/*.pyc
+backend/.venv
+frontend
+nginx
+web
+DEPLOY.md
+README.md
+docker-compose.yml
+.env
+.env.example

@@ -1,0 +1,38 @@
+# systemd-юнит для сервиса генератора учебного контента —
+# альтернатива Docker (запуск напрямую через venv).
+#
+# РАСКЛАДКА (предполагается):
+#   /opt/content-gen/             — корень развёртывания
+#   /opt/content-gen/backend/     — код (app.py, generator.py, templates.json, requirements.txt)
+#   /opt/content-gen/.venv/       — виртуальное окружение Python
+#   /opt/content-gen/.env         — переменные окружения (из .env.example)
+#
+# УСТАНОВКА:
+#   sudo mkdir -p /opt/content-gen
+#   sudo cp -r backend /opt/content-gen/
+#   sudo cp .env.example /opt/content-gen/.env   # затем отредактировать .env
+#   sudo python3 -m venv /opt/content-gen/.venv
+#   sudo /opt/content-gen/.venv/bin/pip install -r /opt/content-gen/backend/requirements.txt
+#   sudo chown -R www-data:www-data /opt/content-gen
+#   sudo cp content-gen.service /etc/systemd/system/content-gen.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now content-gen
+#   sudo systemctl status content-gen      # проверить
+#   journalctl -u content-gen -f           # логи
+
+[Unit]
+Description=Генератор учебного контента (FastAPI/uvicorn)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/content-gen/backend
+EnvironmentFile=/opt/content-gen/.env
+# Слушает только localhost — наружу сервис отдаёт nginx.
+ExecStart=/opt/content-gen/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8080
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

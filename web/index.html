@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генератор учебного контента</title>
+  <style>
+    /* Минимальная тестовая страница. Запросы идут same-origin (через nginx). */
+    :root {
+      --accent: #00C8E8;
+      --accent-dark: #00a6c2;
+      --bg: #f6f8fa;
+      --card: #ffffff;
+      --line: #e3e8ee;
+      --text: #1f2733;
+      --muted: #6b7785;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 28px 16px 56px; }
+    header h1 { font-size: 22px; margin: 0 0 4px; }
+    header p { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px;
+    }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+    .hint { font-weight: 400; color: var(--muted); }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 200, 232, 0.15);
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #062a31;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: var(--accent-dark); color: #fff; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .meta { font-size: 12px; color: var(--muted); margin: 18px 0 6px; }
+    .result {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #fbfcfd;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 14px;
+      min-height: 80px;
+    }
+    .error {
+      background: #fdecea;
+      color: #c0392b;
+      border: 1px solid #f5c6cb;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 13px;
+      margin-top: 16px;
+    }
+    .error:empty { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Генератор учебного контента</h1>
+      <p>Тестовая страница сервиса. Запросы отправляются на этот же домен.</p>
+    </header>
+
+    <div class="card">
+      <label for="template">Тип контента</label>
+      <select id="template"></select>
+
+      <div class="row">
+        <div>
+          <label for="subject">Дисциплина <span class="hint">*</span></label>
+          <input id="subject" placeholder="напр. История Казахстана">
+        </div>
+        <div>
+          <label for="topic">Тема <span class="hint">*</span></label>
+          <input id="topic" placeholder="напр. Казахское ханство">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="level">Уровень</label>
+          <input id="level" value="бакалавриат">
+        </div>
+        <div>
+          <label for="count">Количество</label>
+          <input id="count" type="number" min="1" placeholder="напр. 10">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="language">Язык</label>
+          <select id="language">
+            <option value="ru">Русский</option>
+            <option value="kk">Қазақша</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div>
+          <label for="extra">Дополнительные пожелания</label>
+          <input id="extra" placeholder="свободный текст">
+        </div>
+      </div>
+
+      <button id="go">Сгенерировать</button>
+
+      <div class="error" id="error"></div>
+      <div class="meta" id="meta"></div>
+      <div class="result" id="result">Заполните поля и нажмите «Сгенерировать».</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // Загрузка списка типов в выпадающий список (GET /templates, same-origin).
+    async function loadTemplates() {
+      try {
+        const res = await fetch("/templates");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const select = $("template");
+        select.innerHTML = "";
+        data.templates.forEach((t) => {
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = t.name;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        showError("Не удалось загрузить типы (/templates): " + e.message);
+      }
+    }
+
+    // Генерация (POST /generate, same-origin).
+    async function generate() {
+      $("error").textContent = "";
+      const subject = $("subject").value.trim();
+      const topic = $("topic").value.trim();
+      if (!subject || !topic) {
+        showError("Заполните обязательные поля: дисциплина и тема.");
+        return;
+      }
+
+      const payload = {
+        template_id: $("template").value,
+        subject,
+        topic,
+        level: $("level").value.trim(),
+        language: $("language").value,
+        extra: $("extra").value.trim(),
+      };
+      const count = $("count").value.trim();
+      if (count !== "") payload.count = count;
+
+      const btn = $("go");
+      btn.disabled = true;
+      btn.textContent = "Генерация…";
+      $("meta").textContent = "";
+      $("result").textContent = "";
+      try {
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail = data.detail || ("HTTP " + res.status);
+          showError("Ошибка " + res.status + ": " + detail);
+          return;
+        }
+        $("meta").textContent = "Модель: " + (data.model || "—") +
+                                " · язык: " + (data.language || "—");
+        $("result").textContent = data.content || "(пустой ответ)";
+      } catch (e) {
+        showError("Сеть недоступна: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Сгенерировать";
+      }
+    }
+
+    function showError(msg) { $("error").textContent = msg; }
+
+    $("go").addEventListener("click", generate);
+    loadTemplates();
+  </script>
+</body>
+</html>
