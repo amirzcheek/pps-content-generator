@@ -29,8 +29,10 @@ User=www-data
 Group=www-data
 WorkingDirectory=/opt/content-gen/backend
 EnvironmentFile=/opt/content-gen/.env
-# Слушает только localhost — наружу сервис отдаёт nginx.
-ExecStart=/opt/content-gen/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8080
+# Хост прослушивания берётся из .env (BIND_HOST):
+#   127.0.0.1               — nginx на том же сервере;
+#   внутренний IP web-сервера — nginx на отдельном сервере (+ фаервол на 8080).
+ExecStart=/opt/content-gen/.venv/bin/uvicorn app:app --host ${BIND_HOST} --port 8080
 Restart=always
 RestartSec=5
 

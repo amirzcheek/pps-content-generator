@@ -84,18 +84,40 @@ sudo cp web/index.html /var/www/content-gen/index.html
 
 ---
 
-## 4. nginx + TLS
+## 4. Сеть и фаервол (если nginx на отдельном сервере)
+
+Когда nginx стоит на отдельном сервере, сервис должен слушать внутренний IP
+web-сервера (а не только `127.0.0.1`), но порт 8080 должен быть закрыт для всех,
+кроме nginx-хоста. В интернет порт не открывается.
+
+1. В `.env` на web-сервере задать адрес прослушивания:
+   ```bash
+   BIND_IP=<внутренний IP web-сервера>      # для Docker
+   BIND_HOST=<внутренний IP web-сервера>    # для systemd
+   ```
+   и перезапустить сервис (`docker compose up -d` или `systemctl restart content-gen`).
+
+2. Закрыть порт 8080 фаерволом — доступ только с nginx-хоста (ufw):
+   ```bash
+   sudo ufw allow from <IP nginx-сервера> to any port 8080 proto tcp
+   sudo ufw deny 8080
+   ```
+   Проверка с nginx-сервера: `curl http://<внутренний IP web-сервера>:8080/health`.
+
+> Если nginx на ТОМ ЖЕ хосте, что и сервис — этот шаг не нужен:
+> оставьте `BIND_IP=127.0.0.1` и `upstream { server 127.0.0.1:8080; }`.
+
+## 5. nginx + TLS
 
 На **выделенном nginx-сервере**:
 
 ```bash
 sudo cp nginx/content-gen.conf /etc/nginx/sites-available/content-gen.conf
 sudo ln -s /etc/nginx/sites-available/content-gen.conf /etc/nginx/sites-enabled/
+# Если nginx на отдельной машине — в content-gen.conf заменить 127.0.0.1:8080
+# в upstream на внутренний адрес web-сервера.
 sudo nginx -t          # проверка конфигурации
 ```
-
-> Если nginx на отдельной машине (не на web-сервере) — в `content-gen.conf`
-> замените `127.0.0.1:8080` в `upstream` на внутренний адрес web-сервера.
 
 ### Сертификат — certbot (Let's Encrypt)
 
@@ -116,7 +138,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ---
 
-## 5. Проверка снаружи
+## 6. Проверка снаружи
 
 1. В браузере открыть `https://content.ai.knus.edu.kz/` — должна открыться тестовая страница.
 2. Выбрать тип, заполнить дисциплину и тему, нажать «Сгенерировать» — должен прийти
