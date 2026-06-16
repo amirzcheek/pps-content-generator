@@ -131,33 +131,39 @@ def build_messages(template_id, params):
     ]
 
 
+# Модель по умолчанию. Имя модели ВСЕГДА передаётся в запросе явно — иначе шлюз
+# подставляет дорогую модель. По согласованию с руководством используем дешёвую
+# gemini-3.1-flash-lite. Переопределяется через LLM_MODEL / KAZ_MODEL.
+DEFAULT_MODEL = "gemini-3.1-flash-lite"
+
+
 def pick_model(language):
     """Выбирает параметры подключения к модели по языку.
 
     Маршрутизация:
-      - kk            -> KazLLM / Sherkala (KAZ_*),
-      - ru / en       -> Qwen3 через OVMS (LLM_*).
+      - kk      -> KAZ_* (если заданы), иначе общий эндпоинт LLM_* (модель мультиязычна),
+      - ru / en -> LLM_*.
 
-    Адреса и имена моделей берутся ТОЛЬКО из переменных окружения.
+    Имя модели берётся из env, а при его отсутствии — DEFAULT_MODEL, чтобы запрос
+    НИКОГДА не уходил без явно указанной (дешёвой) модели.
 
     :return: словарь {base_url, model, api_key}.
     """
     language = (language or "ru").strip().lower()
 
     if language == "kk":
-        base_url = os.getenv("KAZ_BASE_URL")
-        model = os.getenv("KAZ_MODEL")
-        api_key = os.getenv("KAZ_API_KEY", "not-needed")
+        # Казахский: отдельный эндпоинт, если задан; иначе тот же LLM-эндпоинт.
+        base_url = os.getenv("KAZ_BASE_URL") or os.getenv("LLM_BASE_URL")
+        model = os.getenv("KAZ_MODEL") or os.getenv("LLM_MODEL") or DEFAULT_MODEL
+        api_key = os.getenv("KAZ_API_KEY") or os.getenv("LLM_API_KEY", "not-needed")
     else:
         base_url = os.getenv("LLM_BASE_URL")
-        model = os.getenv("LLM_MODEL")
+        model = os.getenv("LLM_MODEL") or DEFAULT_MODEL
         api_key = os.getenv("LLM_API_KEY", "not-needed")
 
-    if not base_url or not model:
+    if not base_url:
         raise RuntimeError(
-            "Не заданы переменные окружения для модели "
-            f"(язык: {language}). Проверьте LLM_BASE_URL/LLM_MODEL "
-            "или KAZ_BASE_URL/KAZ_MODEL."
+            f"Не задан адрес модели LLM_BASE_URL (язык: {language}). Проверьте .env."
         )
 
     return {"base_url": base_url, "model": model, "api_key": api_key}

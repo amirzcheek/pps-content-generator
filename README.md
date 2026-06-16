@@ -46,10 +46,12 @@ content_generator/
 
 | `language` | Модель |
 |-----------|--------|
-| `kk` | KazLLM-8B / Sherkala-8B (`KAZ_*`) |
-| `ru`, `en` | Qwen3-14B через OVMS (`LLM_*`) |
+| `ru`, `en` | `gemini-3.1-flash-lite` через OpenAI-совместимый шлюз (`LLM_*`) |
+| `kk` | `KAZ_*`, если заданы; иначе тот же шлюз `LLM_*` (модель мультиязычна) |
 
-Адреса и имена моделей задаются **только** через переменные окружения.
+Адреса и ключи задаются **только** через переменные окружения. Имя модели
+(`LLM_MODEL`) **всегда передаётся в запрос явно** — иначе шлюз подставляет дорогую
+модель; значение по умолчанию — `gemini-3.1-flash-lite`.
 
 ## Установка
 
@@ -88,15 +90,16 @@ pip install -r requirements.txt
 ## Переменные окружения
 
 ```bash
-# Qwen3 (OVMS) — для русского и английского
-export LLM_BASE_URL="http://qwen-ovms:8000/v3"
-export LLM_MODEL="Qwen3-14B"
-export LLM_API_KEY="not-needed"        # локальным моделям ключ обычно не нужен
+# LLM (ru/en, OpenAI-совместимый шлюз)
+export LLM_BASE_URL="http://10.99.99.201:8000/v1"
+export LLM_MODEL="gemini-3.1-flash-lite"   # ОБЯЗАТЕЛЬНО дешёвая модель, явно
+export LLM_API_KEY="not-needed"            # для Gemini — реальный ключ шлюза
 
-# KazLLM / Sherkala — для казахского
-export KAZ_BASE_URL="http://kazllm:8000/v1"
-export KAZ_MODEL="KazLLM-8B"
-export KAZ_API_KEY="not-needed"
+# Казахский (необязательно) — только если для kk будет отдельный эндпоинт.
+# При пустых KAZ_* казахский идёт на тот же LLM-шлюз с той же моделью.
+export KAZ_BASE_URL=""
+export KAZ_MODEL=""
+export KAZ_API_KEY=""
 
 # CORS — домены веб-интерфейса, которым разрешены запросы из браузера.
 # Несколько доменов — через запятую. По умолчанию: https://ai.knus.edu.kz
@@ -106,10 +109,8 @@ export CORS_ORIGINS="https://ai.knus.edu.kz"
 В PowerShell (Windows):
 
 ```powershell
-$env:LLM_BASE_URL = "http://qwen-ovms:8000/v1"
-$env:LLM_MODEL    = "Qwen3-14B"
-$env:KAZ_BASE_URL = "http://kazllm:8000/v1"
-$env:KAZ_MODEL    = "KazLLM-8B"
+$env:LLM_BASE_URL = "http://10.99.99.201:8000/v1"
+$env:LLM_MODEL    = "gemini-3.1-flash-lite"
 ```
 
 ## Запуск
