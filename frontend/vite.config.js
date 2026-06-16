@@ -2,11 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // Конфигурация Vite.
-// base: "/" — если интерфейс будет размещён в подкаталоге портала
-// (например ai.knus.edu.kz/content-generator/), поменяйте на "/content-generator/".
+// base — префикс под-пути на портале. Для сборки агента под
+// ai.knus.edu.kz/agents/<slug>/ задаётся аргументом VITE_BASE
+// (см. Dockerfile). По умолчанию "/" — для локальной разработки.
 export default defineConfig({
   plugins: [react()],
-  base: "/",
+  base: process.env.VITE_BASE || "/",
   server: {
     port: 5173,
     // Прокси на backend в режиме разработки: запросы /api/* идут на ядро,

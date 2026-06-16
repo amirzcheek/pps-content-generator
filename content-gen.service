@@ -11,6 +11,12 @@
 #   sudo mkdir -p /opt/content-gen
 #   sudo cp -r backend /opt/content-gen/
 #   sudo cp .env.example /opt/content-gen/.env   # затем отредактировать .env
+#   # --- собрать React-фронтенд под под-путь портала и положить рядом ---
+#   ( cd frontend \
+#     && VITE_BASE=/agents/course-dev-content-generator/ \
+#        VITE_API_BASE=/agents/course-dev-content-generator npm ci && npm run build )
+#   sudo cp -r frontend/dist /opt/content-gen/backend/static   # FastAPI отдаёт её
+#   # --- python-окружение ---
 #   sudo python3 -m venv /opt/content-gen/.venv
 #   sudo /opt/content-gen/.venv/bin/pip install -r /opt/content-gen/backend/requirements.txt
 #   sudo chown -R www-data:www-data /opt/content-gen
@@ -19,6 +25,9 @@
 #   sudo systemctl enable --now content-gen
 #   sudo systemctl status content-gen      # проверить
 #   journalctl -u content-gen -f           # логи
+#
+# ROOT_PATH и BIND_HOST берутся из /opt/content-gen/.env (см. .env.example).
+# FastAPI по умолчанию отдаёт статику из backend/static — отдельный путь не нужен.
 
 [Unit]
 Description=Генератор учебного контента (FastAPI/uvicorn)

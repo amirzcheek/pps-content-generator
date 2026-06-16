@@ -1,4 +1,5 @@
-# В образ нужен только backend/. Исключаем всё лишнее.
+# В образ идут backend/ и frontend/ (фронт собирается на стадии 1).
+# Исключаем тяжёлое и ненужное.
 .git
 .gitignore
 .claude
@@ -6,7 +7,8 @@ __pycache__
 **/__pycache__
 **/*.pyc
 backend/.venv
-frontend
+frontend/node_modules
+frontend/dist
 nginx
 web
 DEPLOY.md

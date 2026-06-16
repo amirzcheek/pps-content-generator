@@ -2,7 +2,13 @@
 # Запуск:  docker compose up -d --build
 services:
   content-gen:
-    build: .
+    build:
+      context: .
+      args:
+        # Префикс под-пути агента на портале и базовый адрес API (тот же префикс).
+        # Меняйте здесь, если slug агента другой.
+        VITE_BASE: ${VITE_BASE:-/agents/course-dev-content-generator/}
+        VITE_API_BASE: ${VITE_API_BASE:-/agents/course-dev-content-generator}
     container_name: content-gen
     restart: unless-stopped
     # Переменные окружения (адреса моделей и т.п.) — из .env (см. .env.example).

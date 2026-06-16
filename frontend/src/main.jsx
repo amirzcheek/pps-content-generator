@@ -9,16 +9,23 @@ import { LanguageProvider } from "./i18n/LanguageContext.jsx";
 import "./index.css";
 
 // Маршруты приложения. App — общий layout (шапка + <Outlet/>).
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <App />,
-    children: [
-      { index: true, element: <HomePage /> },
-      { path: "generate/:templateId", element: <GeneratorPage /> },
-    ],
-  },
-]);
+// basename = префикс под-пути портала (Vite base), чтобы ссылки react-router
+// строились относительно /agents/<slug>/. В dev base = "/".
+const basename = (import.meta.env.BASE_URL || "/").replace(/\/$/, "") || "/";
+
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <App />,
+      children: [
+        { index: true, element: <HomePage /> },
+        { path: "generate/:templateId", element: <GeneratorPage /> },
+      ],
+    },
+  ],
+  { basename }
+);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

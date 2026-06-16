@@ -1,23 +1,43 @@
-# Образ сервиса генератора учебного контента.
-# Контекст сборки — корень репозитория; код берётся из backend/.
-FROM python:3.12-slim
+# Образ агента: единый сервис — FastAPI отдаёт и API, и собранный React.
+# Контекст сборки — корень репозитория.
 
-# Не писать .pyc, не буферизовать stdout/stderr (логи сразу видны в docker logs).
+# ── Стадия 1: сборка React-фронтенда ──
+FROM node:20-slim AS frontend
+WORKDIR /fe
+
+# Префикс под-пути на портале и базовый адрес API (тот же префикс) —
+# задаются аргументами сборки (см. docker-compose.yml). Vite подхватывает
+# VITE_*-переменные из окружения.
+ARG VITE_BASE=/agents/course-dev-content-generator/
+ARG VITE_API_BASE=/agents/course-dev-content-generator
+ENV VITE_BASE=$VITE_BASE \
+    VITE_API_BASE=$VITE_API_BASE
+
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ── Стадия 2: бэкенд + статика ──
+FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Сначала зависимости — слой кешируется, пока requirements.txt не меняется.
+# Зависимости (слой кешируется, пока requirements.txt не меняется).
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Затем код ядра (app.py, generator.py, templates.json).
+# Код ядра (app.py, generator.py, templates.json).
 COPY backend/ ./
 
-# Сервис слушает 8080 внутри контейнера.
+# Собранный фронтенд кладём в каталог, который отдаёт FastAPI.
+COPY --from=frontend /fe/dist ./static
+ENV FRONTEND_DIST=/app/static
+
 EXPOSE 8080
 
-# Запуск uvicorn. Наружу контейнера порт пробрасывается только на localhost
-# (см. docker-compose.yml), доступ извне — через nginx.
+# Наружу порт пробрасывается только во внутреннюю сеть (см. docker-compose.yml),
+# доступ снаружи — через nginx основного домена под /agents/<slug>/.
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
