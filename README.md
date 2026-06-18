@@ -97,10 +97,12 @@ pip install -r requirements.txt
 ## Переменные окружения
 
 ```bash
-# Основная (локальная) модель, ru/en. Пусто -> всё идёт на резервную Gemini.
-export LLM_BASE_URL="http://<ollama-хост>:11434/v1"
-export LLM_MODEL="<имя локальной модели>"   # передаётся явно
-export LLM_API_KEY="not-needed"
+# Основная (локальная) модель — OVMS/Qwen3 (путь /v3!). Пусто -> всё на Gemini.
+export LLM_BASE_URL="http://<LLM_HOST>:8000/v3"
+export LLM_MODEL="OpenVINO/Qwen3-14B-int8-ov"   # передаётся явно
+export LLM_API_KEY="not-needed"                 # OVMS без авторизации
+export LLM_TIMEOUT="300"                         # CPU-инференс медленный
+export LLM_DISABLE_THINKING="true"               # отключить <think> у Qwen3
 
 # Казахский (необязательно) — отдельный эндпоинт; пусто -> как LLM_*/резерв.
 export KAZ_BASE_URL=""
@@ -119,12 +121,22 @@ export CORS_ORIGINS="https://ai.knus.edu.kz"
 В PowerShell (Windows):
 
 ```powershell
-$env:LLM_BASE_URL      = "http://<ollama-хост>:11434/v1"
-$env:LLM_MODEL         = "<имя локальной модели>"
+$env:LLM_BASE_URL      = "http://<LLM_HOST>:8000/v3"
+$env:LLM_MODEL         = "OpenVINO/Qwen3-14B-int8-ov"
+$env:LLM_TIMEOUT       = "300"
 $env:FALLBACK_BASE_URL = "https://<gemini-шлюз>/v1"
 $env:FALLBACK_MODEL    = "gemini-3.1-flash-lite"
 $env:FALLBACK_API_KEY  = "<ключ>"
 ```
+
+### Эндпоинты генерации
+
+| Метод | Назначение |
+|-------|-----------|
+| `POST /generate` | разовый ответ JSON (для n8n и простых клиентов) |
+| `POST /generate/stream` | потоковая отдача (SSE) — текст идёт по мере генерации, использует веб-интерфейс |
+
+Оба отключают размышления Qwen3 (`enable_thinking=false`) и уважают `LLM_TIMEOUT`.
 
 ## Запуск
 

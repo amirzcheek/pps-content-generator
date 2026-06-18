@@ -39,11 +39,63 @@ export function preview(payload) {
   });
 }
 
-// Полная генерация через модель.
+// Полная генерация через модель (без потока) — для n8n и простых клиентов.
 export function generate(payload) {
   return request("/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+// Потоковая генерация (SSE): текст приходит по мере готовности.
+// Колбэки: onMeta({source, model, language}), onChunk(text).
+// Бросает Error при ошибке (в т.ч. событие error из потока).
+export async function generateStream(payload, { onMeta, onChunk } = {}) {
+  let res;
+  try {
+    res = await fetch(API_BASE + "/generate/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    throw new Error("Сеть недоступна или backend не запущен. " + e.message);
+  }
+  if (!res.ok || !res.body) {
+    const data = await res.json().catch(() => ({}));
+    const err = new Error(data.detail || "HTTP " + res.status);
+    err.status = res.status;
+    throw err;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  // Разбираем поток событий SSE: блоки разделены "\n\n", полезная нагрузка в "data:".
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let sep;
+    while ((sep = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      const line = block.replace(/^data:\s?/, "").trim();
+      if (!line) continue;
+
+      let ev;
+      try {
+        ev = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (ev.type === "meta") onMeta?.(ev);
+      else if (ev.type === "chunk") onChunk?.(ev.text);
+      else if (ev.type === "error") throw new Error(ev.detail || "Ошибка генерации");
+      // "done" — поток завершён успешно.
+    }
+  }
 }

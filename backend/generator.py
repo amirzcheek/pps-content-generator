@@ -136,6 +136,27 @@ def build_messages(template_id, params):
 # передаётся явно — иначе шлюз берёт дорогую по умолчанию.
 DEFAULT_FALLBACK_MODEL = "gemini-3.1-flash-lite"
 
+# Qwen3 — рассуждающая модель: без этого флага она пишет <think>…</think> перед
+# ответом, тратя токены и время. Отключаем размышления через chat_template_kwargs
+# (OVMS/Qwen3). Применяется ТОЛЬКО к локальной модели; Gemini такого не понимает.
+NO_THINKING_EXTRA_BODY = {"chat_template_kwargs": {"enable_thinking": False}}
+
+
+def _llm_timeout():
+    """Таймаут запроса к модели в секундах (CPU-инференс медленный)."""
+    try:
+        return int(os.getenv("LLM_TIMEOUT", "300"))
+    except ValueError:
+        return 300
+
+
+def _disable_thinking():
+    """Отключать ли размышления Qwen (по умолчанию да). Переопределяется
+    переменной LLM_DISABLE_THINKING (false — оставить как есть)."""
+    return os.getenv("LLM_DISABLE_THINKING", "true").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
 
 def pick_model(language):
     """Параметры ОСНОВНОЙ (локальной) модели по языку.
@@ -147,7 +168,7 @@ def pick_model(language):
     Если эндпоинт/модель не заданы — поля будут None (тогда генерация уйдёт
     на резервную модель, см. generate()).
 
-    :return: словарь {base_url, model, api_key}.
+    :return: словарь {base_url, model, api_key, extra_body}.
     """
     language = (language or "ru").strip().lower()
 
@@ -160,7 +181,13 @@ def pick_model(language):
         model = os.getenv("LLM_MODEL")
         api_key = os.getenv("LLM_API_KEY", "not-needed")
 
-    return {"base_url": base_url, "model": model, "api_key": api_key}
+    return {
+        "base_url": base_url,
+        "model": model,
+        "api_key": api_key,
+        # Для локальной (Qwen3) отключаем <think>; для прочих можно выключить env-ом.
+        "extra_body": NO_THINKING_EXTRA_BODY if _disable_thinking() else None,
+    }
 
 
 def pick_fallback_model():
@@ -169,68 +196,86 @@ def pick_fallback_model():
     Имя модели — из FALLBACK_MODEL, по умолчанию gemini-3.1-flash-lite.
     Если FALLBACK_BASE_URL не задан — резерва нет.
 
-    :return: словарь {base_url, model, api_key}.
+    :return: словарь {base_url, model, api_key, extra_body}.
     """
     return {
         "base_url": os.getenv("FALLBACK_BASE_URL"),
         "model": os.getenv("FALLBACK_MODEL", DEFAULT_FALLBACK_MODEL),
         "api_key": os.getenv("FALLBACK_API_KEY", "not-needed"),
+        # Gemini не понимает chat_template_kwargs — extra_body не передаём.
+        "extra_body": None,
     }
 
 
-def _call_model(cfg, messages, temperature, max_tokens):
-    """Один вызов OpenAI-совместимого API. Имя модели передаётся ЯВНО."""
+def _ordered_attempts(language, prefer_fallback):
+    """Список попыток [(источник, cfg), ...] в нужном порядке.
+
+    Кандидат пригоден, только если заданы и адрес, и имя модели (иначе шлюз
+    получил бы пустую модель). При prefer_fallback резервная идёт первой.
+    """
+    primary = pick_model(language)
+    fallback = pick_fallback_model()
+    primary_ok = bool(primary["base_url"] and primary["model"])
+    fallback_ok = bool(fallback["base_url"] and fallback["model"])
+
+    order = []
+    if prefer_fallback:
+        if fallback_ok:
+            order.append(("резервная", fallback))
+        if primary_ok:
+            order.append(("основная", primary))
+    else:
+        if primary_ok:
+            order.append(("основная", primary))
+        if fallback_ok:
+            order.append(("резервная", fallback))
+    return order
+
+
+def _create_completion(cfg, messages, temperature, max_tokens, stream):
+    """Вызов OpenAI-совместимого API. Имя модели передаётся ЯВНО, для локальной
+    модели добавляется extra_body (отключение размышлений), задаётся timeout."""
     from openai import OpenAI
 
     client = OpenAI(base_url=cfg["base_url"], api_key=cfg["api_key"])
-    response = client.chat.completions.create(
-        model=cfg["model"],
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
-    return response.choices[0].message.content
+    kwargs = {
+        "model": cfg["model"],
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "stream": stream,
+        "timeout": _llm_timeout(),
+    }
+    if cfg.get("extra_body"):
+        kwargs["extra_body"] = cfg["extra_body"]
+    return client.chat.completions.create(**kwargs)
+
+
+def _iter_text(stream):
+    """Извлекает текстовые куски из потокового ответа OpenAI SDK."""
+    for chunk in stream:
+        if not getattr(chunk, "choices", None):
+            continue
+        delta = chunk.choices[0].delta
+        text = getattr(delta, "content", None)
+        if text:
+            yield text
 
 
 def generate(template_id, params, temperature=0.7, max_tokens=2048,
              prefer_fallback=False):
-    """Полный цикл генерации с резервированием.
+    """Полный цикл генерации с резервированием (без потока).
 
-    Порядок: ОСНОВНАЯ (локальная) модель -> при сбое РЕЗЕРВНАЯ (Gemini).
-    Если prefer_fallback=True (например, ресёрч-запрос) — сразу Gemini, а
-    локальная остаётся как запасной вариант.
+    Порядок: ОСНОВНАЯ (локальная) -> при сбое РЕЗЕРВНАЯ (Gemini). При
+    prefer_fallback=True (ресёрч) — сразу Gemini, локальная как запасная.
 
-    :return: словарь с текстом, использованной моделью, языком и источником
-        ("основная"/"резервная").
-    :raises ValueError: при ошибках параметров (отдаётся как 400 в app.py).
-    :raises RuntimeError: если все эндпоинты недоступны (отдаётся как 502).
+    :return: словарь {content, model, language, source}.
+    :raises ValueError: при ошибках параметров (400 в app.py).
+    :raises RuntimeError: если все эндпоинты недоступны (502 в app.py).
     """
     messages = build_messages(template_id, params)
     language = (params.get("language") or "ru").strip().lower()
-
-    primary = pick_model(language)
-    fallback = pick_fallback_model()
-
-    # Кандидат пригоден, только если заданы и адрес, и имя модели
-    # (иначе шлюз получил бы пустую модель и взял дорогую по умолчанию).
-    primary_ok = bool(primary["base_url"] and primary["model"])
-    fallback_ok = bool(fallback["base_url"] and fallback["model"])
-
-    primary_attempt = ("основная", primary)
-    fallback_attempt = ("резервная", fallback)
-
-    # Порядок попыток.
-    attempts = []
-    if prefer_fallback:
-        if fallback_ok:
-            attempts.append(fallback_attempt)
-        if primary_ok:
-            attempts.append(primary_attempt)
-    else:
-        if primary_ok:
-            attempts.append(primary_attempt)
-        if fallback_ok:
-            attempts.append(fallback_attempt)
+    attempts = _ordered_attempts(language, prefer_fallback)
 
     if not attempts:
         raise RuntimeError(
@@ -241,9 +286,11 @@ def generate(template_id, params, temperature=0.7, max_tokens=2048,
     last_error = None
     for source, cfg in attempts:
         try:
-            content = _call_model(cfg, messages, temperature, max_tokens)
+            response = _create_completion(
+                cfg, messages, temperature, max_tokens, stream=False
+            )
             return {
-                "content": content,
+                "content": response.choices[0].message.content,
                 "model": cfg["model"],
                 "language": language,
                 "source": source,
@@ -252,9 +299,65 @@ def generate(template_id, params, temperature=0.7, max_tokens=2048,
             last_error = exc
             continue
 
-    raise RuntimeError(
-        f"Все эндпоинты недоступны. Последняя ошибка: {last_error}"
-    )
+    raise RuntimeError(f"Все эндпоинты недоступны. Последняя ошибка: {last_error}")
+
+
+def stream_generate(template_id, params, temperature=0.7, max_tokens=2048,
+                    prefer_fallback=False):
+    """Потоковая генерация: отдаёт словари-события по мере поступления текста.
+
+    События:
+      {"type":"meta",  "source","model","language"}  — один раз перед текстом;
+      {"type":"chunk", "text": "..."}                — куски текста;
+      {"type":"done"}                                — успешное завершение;
+      {"type":"error", "detail": "..."}              — ошибка.
+
+    Резерв срабатывает, только если основная модель не отдала ни одного куска
+    (сбой соединения до начала ответа). После старта потока ошибки не приводят
+    к переключению — отдаётся событие error.
+    """
+    try:
+        messages = build_messages(template_id, params)
+    except ValueError as exc:
+        yield {"type": "error", "detail": str(exc)}
+        return
+
+    language = (params.get("language") or "ru").strip().lower()
+    attempts = _ordered_attempts(language, prefer_fallback)
+    if not attempts:
+        yield {"type": "error", "detail": "Не настроен ни основной, ни резервный "
+                                          "эндпоинт. Проверьте .env."}
+        return
+
+    last_error = None
+    for source, cfg in attempts:
+        try:
+            stream = _create_completion(
+                cfg, messages, temperature, max_tokens, stream=True
+            )
+            iterator = _iter_text(stream)
+            # Первый кусок — здесь всплывают ошибки соединения; до него можно
+            # переключиться на резерв.
+            first = next(iterator, "")
+        except Exception as exc:  # noqa: BLE001 — пробуем следующий эндпоинт.
+            last_error = exc
+            continue
+
+        # Зафиксировали источник — дальше переключений нет.
+        yield {"type": "meta", "source": source, "model": cfg["model"],
+               "language": language}
+        try:
+            if first:
+                yield {"type": "chunk", "text": first}
+            for text in iterator:
+                yield {"type": "chunk", "text": text}
+            yield {"type": "done"}
+        except Exception as exc:  # noqa: BLE001 — поток оборвался после старта.
+            yield {"type": "error", "detail": f"Поток прерван: {exc}"}
+        return
+
+    yield {"type": "error",
+           "detail": f"Все эндпоинты недоступны. Последняя ошибка: {last_error}"}
 
 
 if __name__ == "__main__":

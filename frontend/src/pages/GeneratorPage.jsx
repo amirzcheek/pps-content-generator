@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getTemplates, preview, generate } from "../api.js";
+import { getTemplates, preview, generateStream } from "../api.js";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 // Русские подписи для необязательных параметров шаблонов (ключи из templates.json).
@@ -115,11 +115,19 @@ export default function GeneratorPage() {
     if (!validate()) return;
     setBusy("generate");
     setResultMeta("");
+    setResult("");
     try {
-      const data = await generate(payload);
-      const src = data.source ? ` · ${data.source}` : "";
-      setResultMeta(`Модель: ${data.model} · язык: ${data.language}${src}`);
-      setResult(data.content);
+      let acc = "";
+      await generateStream(payload, {
+        onMeta: (m) =>
+          setResultMeta(
+            `Модель: ${m.model} · язык: ${m.language} · ${m.source}`
+          ),
+        onChunk: (text) => {
+          acc += text;
+          setResult(acc); // текст наполняется по мере генерации
+        },
+      });
     } catch (e) {
       setError(`Ошибка ${e.status ?? ""}: ${e.message}`);
     } finally {

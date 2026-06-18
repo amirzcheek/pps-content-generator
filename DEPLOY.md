@@ -18,7 +18,7 @@ React-интерфейс, и API.
                    content-gen: FastAPI/uvicorn (React + API в одном сервисе)
                           │  LLM_BASE_URL
                           ▼
-                   [ LLM (Ollama, <LLM_HOST>:11434) ] — основная; резерв: Gemini (облако)
+                   [ LLM (OVMS/Qwen3, <LLM_HOST>:8000/v3) ] — основная; резерв: Gemini
 ```
 
 - Сервис **не торчит в интернет** — слушает внутренний адрес web-сервера, порт 8080
@@ -47,9 +47,10 @@ nano .env
 Заполнить в `.env`:
 ```ini
 # Основная (локальная) модель. Пусто -> всё идёт на резервную Gemini.
-LLM_BASE_URL=http://<LLM_HOST>:11434/v1        # локальная модель (Ollama)
-LLM_MODEL=<имя локальной модели>                # передаётся явно
-LLM_API_KEY=not-needed
+LLM_BASE_URL=http://<LLM_HOST>:8000/v3         # OVMS/Qwen3 (путь /v3!)
+LLM_MODEL=OpenVINO/Qwen3-14B-int8-ov            # передаётся явно
+LLM_API_KEY=not-needed                          # OVMS без авторизации
+LLM_TIMEOUT=300                                 # CPU-инференс медленный
 KAZ_BASE_URL=                                    # kk: пусто -> как LLM_*/резерв
 KAZ_MODEL=
 KAZ_API_KEY=
