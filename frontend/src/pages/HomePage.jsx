@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { getTemplates } from "../api.js";
-import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { useI18n } from "../i18n.jsx";
 
 // Главная: карточки типов контента. Клик ведёт на страницу генератора.
 export default function HomePage() {
-  const { t } = useLanguage();
+  const { t } = useI18n();
   const [templates, setTemplates] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -18,14 +18,14 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="muted">{t("loading_types")}</p>;
+  if (loading) return <p className="muted">{t("home_loading")}</p>;
 
   if (error)
     return (
       <div className="error">
-        {t("load_error")} {error}
+        {t("home_load_error")} {error}
         <br />
-        {t("check_backend")}
+        {t("home_check_backend")}
       </div>
     );
 

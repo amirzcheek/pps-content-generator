@@ -60,7 +60,9 @@ class GenerateRequest(BaseModel):
     subject: str = Field(..., description="Предмет / дисциплина")
     topic: str = Field(..., description="Тема")
     level: Optional[str] = Field("бакалавриат", description="Уровень обучения")
-    language: str = Field("ru", description="Язык ответа: ru | kk | en")
+    # Язык интерфейса/генерации с фронтенда. Приоритетнее устаревшего language.
+    lang: Optional[str] = Field(None, description="Язык вывода: ru | kk | en")
+    language: str = Field("ru", description="Устар. синоним lang (для совместимости)")
     extra: Optional[str] = Field("", description="Свободные пожелания преподавателя")
 
     # Необязательные параметры конкретных шаблонов.
@@ -93,6 +95,9 @@ def _to_params(req: GenerateRequest) -> dict:
     params.pop("temperature", None)
     params.pop("max_tokens", None)
     params.pop("prefer_fallback", None)
+    # Эффективный язык: lang (новое поле) -> language (старое) -> ru.
+    lang = params.pop("lang", None)
+    params["language"] = (lang or params.get("language") or "ru").strip().lower()
     return params
 
 

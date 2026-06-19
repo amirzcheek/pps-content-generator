@@ -2,40 +2,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getTemplates, preview, generateStream } from "../api.js";
-import { useLanguage } from "../i18n/LanguageContext.jsx";
-
-// Русские подписи для необязательных параметров шаблонов (ключи из templates.json).
-const PARAM_LABELS = {
-  count: "Количество",
-  options: "Варианты ответа",
-  difficulty: "Сложность",
-  depth: "Глубина",
-  with_solutions: "С решениями",
-  context: "Контекст",
-  duration: "Длительность",
-  format: "Формат",
-  work_type: "Тип работы",
-  scale: "Шкала",
-  length: "Объём",
-};
+import { useI18n } from "../i18n.jsx";
 
 export default function GeneratorPage() {
   const { templateId } = useParams();
-  // Язык генерации берётся из переключателя в навбаре (общий с интерфейсом).
-  const { lang, t } = useLanguage();
+  // Язык генерации и интерфейса — общий, из переключателя в навбаре.
+  const { lang, t } = useI18n();
 
   const [template, setTemplate] = useState(null);
   const [loadError, setLoadError] = useState("");
 
-  // Состояние формы.
-  const [form, setForm] = useState({
+  // Состояние формы (уровень по умолчанию — из перевода).
+  const [form, setForm] = useState(() => ({
     subject: "",
     topic: "",
-    level: "бакалавриат",
+    level: t("level_default"),
     extra: "",
     temperature: 0.7,
     max_tokens: 2048,
-  });
+  }));
   // Необязательные параметры конкретного шаблона (extra_params).
   const [extraParams, setExtraParams] = useState({});
 
@@ -54,9 +39,9 @@ export default function GeneratorPage() {
     getTemplates()
       .then((list) => {
         if (!active) return;
-        const found = list.find((t) => t.id === templateId);
+        const found = list.find((item) => item.id === templateId);
         if (!found) {
-          setLoadError("Тип контента не найден: " + templateId);
+          setLoadError(t("err_template_not_found", { id: templateId }));
           return;
         }
         setTemplate(found);
@@ -75,9 +60,9 @@ export default function GeneratorPage() {
   const setExtra = (name, value) =>
     setExtraParams((p) => ({ ...p, [name]: value }));
 
-  // Сборка тела запроса: базовые поля + язык из навбара + непустые доп.параметры.
+  // Сборка тела запроса: базовые поля + язык из навбара (поле lang) + доп.параметры.
   const payload = useMemo(() => {
-    const body = { template_id: templateId, ...form, language: lang };
+    const body = { template_id: templateId, ...form, lang };
     body.temperature = parseFloat(form.temperature);
     body.max_tokens = parseInt(form.max_tokens, 10);
     for (const [k, v] of Object.entries(extraParams)) {
@@ -88,7 +73,7 @@ export default function GeneratorPage() {
 
   const validate = () => {
     if (!form.subject.trim() || !form.topic.trim()) {
-      setError("Заполните обязательные поля: предмет и тема.");
+      setError(t("err_required"));
       return false;
     }
     return true;
@@ -103,10 +88,10 @@ export default function GeneratorPage() {
       const text = data.messages
         .map((m) => `[${m.role.toUpperCase()}]\n${m.content}`)
         .join("\n\n");
-      setResultMeta("Предпросмотр промпта (модель не вызывалась)");
+      setResultMeta(t("preview_meta"));
       setResult(text);
     } catch (e) {
-      setError(`Ошибка ${e.status ?? ""}: ${e.message}`);
+      setError(t("err_generic", { status: e.status ?? "", message: e.message }));
     } finally {
       setBusy(null);
     }
@@ -127,7 +112,11 @@ export default function GeneratorPage() {
       await generateStream(payload, {
         signal: controller.signal,
         onMeta: (m) => {
-          metaStr = `Модель: ${m.model} · язык: ${m.language} · ${m.source}`;
+          const langName = t(`lang_${m.language}`) || m.language;
+          const src = t(
+            m.source === "основная" ? "source_primary" : "source_fallback"
+          );
+          metaStr = t("meta_line", { model: m.model, lang: langName, source: src });
           setResultMeta(metaStr);
         },
         onChunk: (text) => {
@@ -137,10 +126,12 @@ export default function GeneratorPage() {
       });
       // Пользователь нажал «Остановить» — помечаем, текст оставляем как есть.
       if (controller.signal.aborted) {
-        setResultMeta(metaStr ? `${metaStr} · остановлено` : "Остановлено");
+        setResultMeta(
+          metaStr ? `${metaStr} · ${t("stopped_suffix")}` : t("stopped")
+        );
       }
     } catch (e) {
-      setError(`Ошибка ${e.status ?? ""}: ${e.message}`);
+      setError(t("err_generic", { status: e.status ?? "", message: e.message }));
     } finally {
       abortRef.current = null;
       setBusy(null);
@@ -164,7 +155,7 @@ export default function GeneratorPage() {
       </div>
     );
 
-  if (!template) return <p className="muted">Загрузка…</p>;
+  if (!template) return <p className="muted">{t("loading")}</p>;
 
   return (
     <div>
@@ -176,32 +167,32 @@ export default function GeneratorPage() {
         {/* ── Форма ── */}
         <section className="card">
           <div className="grid-2">
-            <Field label="Предмет *">
+            <Field label={`${t("f_subject")} *`}>
               <input
                 value={form.subject}
                 onChange={(e) => setField("subject", e.target.value)}
-                placeholder="напр. История Казахстана"
+                placeholder={t("ph_subject")}
               />
             </Field>
-            <Field label="Тема *">
+            <Field label={`${t("f_topic")} *`}>
               <input
                 value={form.topic}
                 onChange={(e) => setField("topic", e.target.value)}
-                placeholder="напр. Казахское ханство"
+                placeholder={t("ph_topic")}
               />
             </Field>
           </div>
 
-          <Field label="Уровень обучения">
+          <Field label={t("f_level")}>
             <input
               value={form.level}
               onChange={(e) => setField("level", e.target.value)}
             />
           </Field>
 
-          {/* Динамические поля шаблона */}
+          {/* Динамические поля шаблона (подпись — переводимая, подсказка — из шаблона) */}
           {Object.entries(template.extra_params || {}).map(([key, hint]) => (
-            <Field key={key} label={PARAM_LABELS[key] ?? key} hint={hint}>
+            <Field key={key} label={t("param_" + key) || key} hint={hint}>
               <input
                 value={extraParams[key] ?? ""}
                 onChange={(e) => setExtra(key, e.target.value)}
@@ -209,17 +200,17 @@ export default function GeneratorPage() {
             </Field>
           ))}
 
-          <Field label="Дополнительные пожелания">
+          <Field label={t("f_extra")}>
             <textarea
               rows={3}
               value={form.extra}
               onChange={(e) => setField("extra", e.target.value)}
-              placeholder="напр. сделать упор на причинно-следственные связи"
+              placeholder={t("ph_extra")}
             />
           </Field>
 
           <div className="grid-2">
-            <Field label="Температура" hint="0–2">
+            <Field label={t("f_temperature")} hint="0–2">
               <input
                 type="number"
                 min="0"
@@ -229,7 +220,7 @@ export default function GeneratorPage() {
                 onChange={(e) => setField("temperature", e.target.value)}
               />
             </Field>
-            <Field label="Макс. токенов">
+            <Field label={t("f_max_tokens")}>
               <input
                 type="number"
                 min="1"
@@ -248,11 +239,11 @@ export default function GeneratorPage() {
               onClick={onPreview}
               disabled={busy !== null}
             >
-              {busy === "preview" ? "Сборка…" : "Предпросмотр промпта"}
+              {busy === "preview" ? t("btn_preview_busy") : t("btn_preview")}
             </button>
             {busy === "generate" ? (
               <button type="button" className="btn btn-stop" onClick={onStop}>
-                ⏹ Остановить
+                ⏹ {t("btn_stop")}
               </button>
             ) : (
               <button
@@ -261,7 +252,7 @@ export default function GeneratorPage() {
                 onClick={onGenerate}
                 disabled={busy !== null}
               >
-                Сгенерировать
+                {t("btn_generate")}
               </button>
             )}
           </div>
@@ -269,15 +260,13 @@ export default function GeneratorPage() {
 
         {/* ── Результат ── */}
         <section className="card">
-          <h2 className="card-title">Результат</h2>
+          <h2 className="card-title">{t("result_title")}</h2>
           {error && <div className="error">{error}</div>}
           {resultMeta && <div className="result-meta">{resultMeta}</div>}
-          <div className="result">
-            {result || "Заполните параметры и нажмите «Сгенерировать»."}
-          </div>
+          <div className="result">{result || t("result_placeholder")}</div>
           {result && (
             <button type="button" className="btn btn-copy" onClick={onCopy}>
-              {copied ? "Скопировано ✓" : "Скопировать"}
+              {copied ? t("btn_copied") : t("btn_copy")}
             </button>
           )}
         </section>

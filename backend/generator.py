@@ -26,6 +26,14 @@ LANGUAGE_NAMES = {
     "en": "английском (English)",
 }
 
+# Жёсткая инструкция языка вывода — добавляется в system-промпт, чтобы модель
+# отдавала сам учебный контент на выбранном языке (а не только подписи UI).
+LANG_INSTRUCTION = {
+    "ru": "Generate ALL content in Russian.",
+    "kk": "Generate ALL content in Kazakh (қазақ тілінде).",
+    "en": "Generate ALL content in English.",
+}
+
 # Значения по умолчанию для необязательных параметров шаблонов.
 # Используются, если фронтенд не передал параметр явно.
 DEFAULT_PARAMS = {
@@ -123,6 +131,8 @@ def build_messages(template_id, params):
         values[key] = str(value)
 
     system = tpl["system"].format_map(SafeDict(values))
+    # Жёстко фиксируем язык вывода модели.
+    system = f"{system}\n\n{LANG_INSTRUCTION[language]}"
     user = tpl["user"].format_map(SafeDict(values))
 
     return [

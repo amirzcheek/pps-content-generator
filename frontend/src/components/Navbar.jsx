@@ -1,22 +1,16 @@
 import { Link } from "react-router-dom";
 
-import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { useI18n, LangSwitcher } from "../i18n.jsx";
 import { useSession } from "../auth/useSession.js";
 
 // Базовый адрес портала (бренд, выход, админка ведут туда).
 // Переопределяется через VITE_PORTAL_URL, по умолчанию — прод-портал.
 const PORTAL = import.meta.env.VITE_PORTAL_URL ?? "https://ai.knus.edu.kz";
 
-const LANGS = [
-  { code: "ru", label: "RU" },
-  { code: "kk", label: "KZ" },
-  { code: "en", label: "EN" },
-];
-
 // Навбар портала ai.knus.edu.kz, адаптированный под этого агента.
 // Ссылка «Админка» видна только администраторам (user.isAdmin из сессии).
 export default function Navbar() {
-  const { lang, setLang, t } = useLanguage();
+  const { t } = useI18n();
   const { user } = useSession();
 
   return (
@@ -30,19 +24,7 @@ export default function Navbar() {
           {t("agent_name")}
         </Link>
 
-        <div className="lang-switch" aria-label="Переключатель языка">
-          {LANGS.map((l) => (
-            <button
-              key={l.code}
-              type="button"
-              className={"lang-btn" + (lang === l.code ? " active" : "")}
-              aria-pressed={lang === l.code}
-              onClick={() => setLang(l.code)}
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
+        <LangSwitcher />
       </div>
 
       <div className="topbar-right">
