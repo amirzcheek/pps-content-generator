@@ -1,28 +1,36 @@
-# Развёртывание сервиса генератора учебного контента через Docker.
-# Запуск:  docker compose up -d --build
+# Развёртывание агента «Генератор контента» через Docker (единый сервис:
+# FastAPI отдаёт и API, и собранный React). Запуск:  docker compose up -d --build
+#
+# Имя сервиса = content-generator, чтобы Caddy резолвил его по имени:
+#   reverse_proxy content-generator:8080
 services:
-  content-gen:
+  content-generator:
     build:
       context: .
       args:
-        # Префикс под-пути агента на портале и базовый адрес API (тот же префикс).
-        # Меняйте здесь, если slug агента другой.
-        VITE_BASE: ${VITE_BASE:-/agents/course-dev-content-generator/}
-        VITE_API_BASE: ${VITE_API_BASE:-/agents/course-dev-content-generator}
-    container_name: content-gen
+        # Под-путь агента на портале (слаг) и базовый адрес API (тот же слаг).
+        VITE_BASE: ${VITE_BASE:-/agents/content-generator/}
+        VITE_API_BASE: ${VITE_API_BASE:-/agents/content-generator}
+    container_name: content-generator
     restart: unless-stopped
-    # Переменные окружения (адреса моделей и т.п.) — из .env (см. .env.example).
+    # Переменные окружения (адреса моделей, ROOT_PATH и т.п.) — из .env.
     env_file: .env
-    # Адрес публикации порта задаётся в .env переменной BIND_IP:
-    #   - 127.0.0.1            — если nginx на ТОМ ЖЕ хосте;
-    #   - внутренний IP web-сервера — если nginx на ОТДЕЛЬНОМ сервере
-    #     (тогда ОБЯЗАТЕЛЬНО закройте порт 8080 фаерволом — доступ только
-    #      с nginx-хоста, см. DEPLOY.md). В интернет порт не открывается.
-    ports:
-      - "${BIND_IP:-127.0.0.1}:8080:8080"
+    expose:
+      - "8080"
 
-    # Если локальная LLM (14b) крутится на ТОМ ЖЕ хосте, что и Docker, то изнутри
-    # контейнера её адрес — host.docker.internal. Раскомментируйте строки ниже и
-    # в .env укажите, например, LLM_BASE_URL=http://host.docker.internal:11434/v1
+    # Caddy ходит к сервису по имени content-generator:8080 ВНУТРИ общей docker-сети
+    # платформы (там же, где Caddy и web:3000). Поэтому публиковать порт на хост не
+    # нужно. Подключите сервис к внешней сети платформы:
+    networks:
+      - platform
+
+    # Если LLM на ТОМ ЖЕ хосте, что и Docker, изнутри контейнера её адрес —
+    # host.docker.internal (для OVMS на отдельном сервере это НЕ нужно):
     # extra_hosts:
     #   - "host.docker.internal:host-gateway"
+
+networks:
+  # Внешняя сеть платформы (та, где Caddy и сервис web). Имя подставьте своё.
+  platform:
+    external: true
+    name: ${PLATFORM_NETWORK:-platform}

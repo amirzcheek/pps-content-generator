@@ -1,6 +1,6 @@
 # Развёртывание агента на портале ai.knus.edu.kz
 
-Агент подключается под-путём основного домена — `https://ai.knus.edu.kz/agents/course-dev-content-generator/`
+Агент подключается под-путём основного домена — `https://ai.knus.edu.kz/agents/content-generator/`
 (как `course-dev`, `examination` и т.д.), **единым сервисом**: FastAPI отдаёт и
 React-интерфейс, и API.
 
@@ -11,7 +11,7 @@ React-интерфейс, и API.
 
 ```
 [ Браузер ] → HTTPS → [ nginx основного домена (<NGINX_HOST>, TLS портала) ]
-                          │  location /agents/course-dev-content-generator/
+                          │  location /agents/content-generator/
                           │  proxy_pass → web-сервер:8080  (префикс обрезается)
                           ▼
                    [ web-сервер (<WEB_HOST>) ]
@@ -30,7 +30,7 @@ React-интерфейс, и API.
   всегда передаётся явно (иначе шлюз берёт дорогую).
 - n8n (Telegram) подключается позже к тому же `/generate` — бэкенд не меняется.
 
-> **Slug агента** — `course-dev-content-generator`. Он встречается в трёх местах и
+> **Slug агента** — `content-generator`. Он встречается в трёх местах и
 > должен совпадать: `ROOT_PATH` и `VITE_BASE/VITE_API_BASE` (сборка) и `location` в nginx.
 
 ---
@@ -59,7 +59,7 @@ FALLBACK_BASE_URL=https://<gemini-шлюз>/v1
 FALLBACK_MODEL=gemini-3.1-flash-lite             # дешёвая, указывать явно!
 FALLBACK_API_KEY=<ключ>                          # реальный ключ Gemini
 
-ROOT_PATH=/agents/course-dev-content-generator  # под-путь портала
+ROOT_PATH=/agents/content-generator  # под-путь портала
 BIND_IP=<WEB_HOST>                            # слушаем внутренний IP (nginx отдельно)
 BIND_HOST=<WEB_HOST>
 ```
@@ -103,26 +103,51 @@ sudo ufw deny 8080
 
 ---
 
-## 4. nginx — подключить под-путь (nginx-сервер <NGINX_HOST>)
+## 4. Подключить под-путь к реверс-прокси
+
+### Caddy (как на платформе — с гейтингом forward_auth)
+
+Готовый фрагмент — [`caddy/Caddyfile.example`](caddy/Caddyfile.example). Сервис
+доступен Caddy по имени `content-generator:8080` в общей docker-сети платформы
+(см. `docker-compose.yml`, сеть `platform`). `handle_path` срезает слаг — бэкенд
+видит `/`, `/templates`, `/assets`, `/generate/stream`, `/auth/session`:
+
+```caddy
+handle_path /agents/content-generator/* {
+    forward_auth web:3000 {
+        uri /api/auth/agent/ContentGenerator
+        # copy_headers Remote-Name Remote-User Remote-Groups X-Is-Admin  # для имени/админки в навбаре
+    }
+    reverse_proxy content-generator:8080 {
+        flush_interval -1   # SSE-стриминг
+    }
+}
+redir /agents/content-generator /agents/content-generator/ 308
+```
+
+Имя пользователя и ссылка «Админка» в навбаре берутся из `GET /auth/session`
+(наш backend читает заголовки, прокинутые `forward_auth` через `copy_headers`).
+
+### nginx (альтернатива, без гейтинга)
 
 В конфиге **основного домена** `ai.knus.edu.kz` (внутри существующего
 `server { listen 443 ssl; ... }`) добавить содержимое
 [`nginx/agent-location.conf`](nginx/agent-location.conf):
 
 ```nginx
-location /agents/course-dev-content-generator/ {
+location /agents/content-generator/ {
     proxy_pass http://<WEB_HOST>:8080/;     # внутренний IP web-сервера, со слешем!
     proxy_http_version 1.1;
     proxy_set_header Host              $host;
     proxy_set_header X-Real-IP         $remote_addr;
     proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-Prefix /agents/course-dev-content-generator;
+    proxy_set_header X-Forwarded-Prefix /agents/content-generator;
     proxy_read_timeout 300s;
     proxy_send_timeout 300s;
 }
-location = /agents/course-dev-content-generator {
-    return 301 /agents/course-dev-content-generator/;
+location = /agents/content-generator {
+    return 301 /agents/content-generator/;
 }
 ```
 
@@ -141,19 +166,19 @@ sudo nginx -t && sudo systemctl reload nginx
 ## 5. Добавить карточку агента на портал
 
 В реестре агентов портала добавить ссылку на
-`/agents/course-dev-content-generator/` (как для course-dev и др.) — по вашему
+`/agents/content-generator/` (как для course-dev и др.) — по вашему
 механизму портала.
 
 ---
 
 ## 6. Проверка снаружи
 
-1. Открыть `https://ai.knus.edu.kz/agents/course-dev-content-generator/` — должен
+1. Открыть `https://ai.knus.edu.kz/agents/content-generator/` — должен
    загрузиться интерфейс (навбар, список типов).
 2. Выбрать тип, заполнить дисциплину/тему, нажать «Сгенерировать».
 3. API напрямую:
    ```bash
-   curl https://ai.knus.edu.kz/agents/course-dev-content-generator/templates
+   curl https://ai.knus.edu.kz/agents/content-generator/templates
    ```
 
 ---

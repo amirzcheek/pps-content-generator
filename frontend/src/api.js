@@ -1,7 +1,8 @@
 // Клиент backend-ядра генератора.
 // Адрес берётся из переменной окружения VITE_API_BASE (см. .env.example).
-// По умолчанию — относительный путь /api (прокси Vite в dev, reverse-proxy на проде).
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+// На проде это слаг агента (/agents/content-generator) — все запросы идут под
+// одним слагом, без абсолютных путей. В dev по умолчанию /api (прокси Vite).
+export const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 // Общий помощник: разбирает ответ и поднимает осмысленную ошибку (400/502 и пр.).
 async function request(path, options) {

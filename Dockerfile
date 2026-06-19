@@ -8,8 +8,8 @@ WORKDIR /fe
 # Префикс под-пути на портале и базовый адрес API (тот же префикс) —
 # задаются аргументами сборки (см. docker-compose.yml). Vite подхватывает
 # VITE_*-переменные из окружения.
-ARG VITE_BASE=/agents/course-dev-content-generator/
-ARG VITE_API_BASE=/agents/course-dev-content-generator
+ARG VITE_BASE=/agents/content-generator/
+ARG VITE_API_BASE=/agents/content-generator
 ENV VITE_BASE=$VITE_BASE \
     VITE_API_BASE=$VITE_API_BASE
 

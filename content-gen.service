@@ -13,8 +13,8 @@
 #   sudo cp .env.example /opt/content-gen/.env   # затем отредактировать .env
 #   # --- собрать React-фронтенд под под-путь портала и положить рядом ---
 #   ( cd frontend \
-#     && VITE_BASE=/agents/course-dev-content-generator/ \
-#        VITE_API_BASE=/agents/course-dev-content-generator npm ci && npm run build )
+#     && VITE_BASE=/agents/content-generator/ \
+#        VITE_API_BASE=/agents/content-generator npm ci && npm run build )
 #   sudo cp -r frontend/dist /opt/content-gen/backend/static   # FastAPI отдаёт её
 #   # --- python-окружение ---
 #   sudo python3 -m venv /opt/content-gen/.venv

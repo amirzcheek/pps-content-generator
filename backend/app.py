@@ -16,7 +16,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
@@ -100,6 +100,36 @@ def _to_params(req: GenerateRequest) -> dict:
 def health():
     """Проверка живости сервиса — для мониторинга на портале."""
     return {"status": "ok"}
+
+
+@app.get("/auth/session")
+def auth_session(request: Request):
+    """Текущий пользователь для навбара (имя + флаг админа).
+
+    Авторизация выполняется платформой на уровне Caddy (forward_auth). После
+    успешной проверки платформа может прокидывать заголовки с данными пользователя
+    (через copy_headers в forward_auth). Здесь читаем распространённые варианты;
+    если заголовков нет — возвращаем «гостя» (навбар просто не покажет имя/админку).
+
+    Имена заголовков можно переопределить через AUTH_USER_HEADERS / AUTH_ADMIN_HEADER.
+    """
+    h = request.headers
+    user_headers = (
+        os.getenv("AUTH_USER_HEADERS")
+        or "remote-name,x-forwarded-user,remote-user,x-auth-user,x-user-name"
+    ).split(",")
+    display_name = ""
+    for name in user_headers:
+        value = h.get(name.strip())
+        if value:
+            display_name = value
+            break
+
+    admin_header = os.getenv("AUTH_ADMIN_HEADER", "x-is-admin")
+    groups = (h.get("remote-groups") or h.get("x-forwarded-groups") or "").lower()
+    is_admin = h.get(admin_header, "").lower() in ("1", "true", "yes") or "admin" in groups
+
+    return {"user": {"displayName": display_name, "isAdmin": is_admin}}
 
 
 @app.get("/templates")

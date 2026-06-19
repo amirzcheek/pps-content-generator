@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 
-// Хук сессии пользователя — заглушка под вход платформы / Azure AD SSO.
-//
-// На портале ai.knus.edu.kz сессию отдаёт эндпоинт /api/auth/session в виде
-//   { user: { displayName, isAdmin, ... } }
-// и именно поле isAdmin управляет показом ссылки «Админка» в навбаре.
-//
-// Когда агент встроен в портал, запрос проходит через серверный прокси и
-// возвращает реальную сессию. Локально (SSO ещё не подключён) эндпоинта нет —
-// тогда graceful fallback на «гостя». Чтобы посмотреть админ-вид при разработке,
-// задайте VITE_PREVIEW_ADMIN=true в frontend/.env.
+import { API_BASE } from "../api.js";
+
+// Хук сессии пользователя. Авторизацию делает платформа на уровне Caddy
+// (forward_auth). Наш backend под слагом отдаёт GET <слаг>/auth/session
+//   { user: { displayName, isAdmin } }
+// на основе заголовков, которые платформа прокидывает после авторизации.
+// Запрос идёт под слагом агента (без абсолютного /api). Если данных нет —
+// graceful fallback на «гостя». Для превью админ-вида в dev: VITE_PREVIEW_ADMIN=true.
 const FALLBACK_USER = {
   displayName: "",
   isAdmin: import.meta.env.VITE_PREVIEW_ADMIN === "true",
@@ -21,7 +19,7 @@ export function useSession() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/auth/session", { cache: "no-store" })
+    fetch(`${API_BASE}/auth/session`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (active && data && data.user) setUser(data.user);

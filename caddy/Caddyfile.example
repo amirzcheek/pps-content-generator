@@ -1,0 +1,26 @@
+# Подключение агента «Генератор контента» к Caddy основного домена.
+# Вариант A: единый сервис — FastAPI отдаёт и React, и API под одним слагом
+# /agents/content-generator. Префикс срезается (handle_path), бэкенд видит
+# /, /templates, /assets, /generate, /generate/stream, /auth/session.
+#
+# Вставьте этот фрагмент в site-блок основного домена (ai.knus.edu.kz).
+
+handle_path /agents/content-generator/* {
+    # Гейтинг платформы: проверка прав на агента до проксирования.
+    forward_auth web:3000 {
+        uri /api/auth/agent/ContentGenerator
+
+        # Чтобы в навбаре показывались имя пользователя и ссылка «Админка»,
+        # прокиньте данные пользователя из ответа auth-сервиса в наш backend
+        # (он читает их в GET /auth/session). Подставьте реальные имена заголовков:
+        # copy_headers Remote-Name Remote-User Remote-Groups X-Is-Admin
+    }
+
+    # Единый сервис агента (имя контейнера из docker-compose), порт 8080.
+    reverse_proxy content-generator:8080 {
+        flush_interval -1   # важно для SSE-стриминга /generate/stream
+    }
+}
+
+# Запрос без завершающего слеша -> добавить слеш (иначе относительные пути SPA сломаются).
+redir /agents/content-generator /agents/content-generator/ 308
