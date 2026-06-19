@@ -138,9 +138,10 @@ def auth_session(request: Request):
 
 
 @app.get("/templates")
-def get_templates():
-    """Список типов контента с подсказками по параметрам — для меню фронтенда."""
-    return {"templates": generator.list_templates()}
+def get_templates(lang: str = "ru"):
+    """Список типов контента с подсказками по параметрам — для меню фронтенда.
+    Названия/описания/подсказки локализуются по ?lang=ru|kk|en."""
+    return {"templates": generator.list_templates(lang)}
 
 
 @app.post("/preview")

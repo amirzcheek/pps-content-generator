@@ -26,9 +26,11 @@ async function request(path, options) {
   return data;
 }
 
-// Список типов контента для меню.
-export function getTemplates() {
-  return request("/templates").then((d) => d.templates);
+// Список типов контента для меню (на нужном языке: ru | kk | en).
+export function getTemplates(lang = "ru") {
+  return request(`/templates?lang=${encodeURIComponent(lang)}`).then(
+    (d) => d.templates
+  );
 }
 
 // Сборка промпта без вызова модели (предпросмотр).

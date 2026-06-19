@@ -33,10 +33,11 @@ export default function GeneratorPage() {
   // Контроллер для остановки потоковой генерации пользователем.
   const abortRef = useRef(null);
 
-  // Загружаем описание шаблона (список типов и ищем нужный).
+  // Загружаем описание шаблона (на текущем языке) и ищем нужный.
+  // Перезагрузка при смене языка обновляет название/описание/подсказки.
   useEffect(() => {
     let active = true;
-    getTemplates()
+    getTemplates(lang)
       .then((list) => {
         if (!active) return;
         const found = list.find((item) => item.id === templateId);
@@ -44,14 +45,18 @@ export default function GeneratorPage() {
           setLoadError(t("err_template_not_found", { id: templateId }));
           return;
         }
+        setLoadError("");
         setTemplate(found);
-        // Сбрасываем доп.параметры при смене шаблона.
-        setExtraParams({});
       })
       .catch((e) => active && setLoadError(e.message));
     return () => {
       active = false;
     };
+  }, [templateId, lang]);
+
+  // Сбрасываем доп.параметры только при смене типа контента (не при смене языка).
+  useEffect(() => {
+    setExtraParams({});
   }, [templateId]);
 
   const setField = (name, value) =>

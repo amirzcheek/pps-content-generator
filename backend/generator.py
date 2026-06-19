@@ -66,17 +66,28 @@ def load_templates():
         return json.load(f)
 
 
-def list_templates():
-    """Возвращает список шаблонов для меню фронтенда:
+def _localize(value, lang):
+    """Возвращает локализованную строку. Если value — словарь {ru,kk,en},
+    берёт нужный язык (fallback ru -> любой). Если строка — возвращает как есть
+    (обратная совместимость со старым форматом шаблонов)."""
+    if isinstance(value, dict):
+        return value.get(lang) or value.get("ru") or next(iter(value.values()), "")
+    return value
+
+
+def list_templates(lang="ru"):
+    """Возвращает список шаблонов для меню фронтенда на нужном языке:
     id, name, description и подсказки по необязательным параметрам."""
+    lang = (lang or "ru").strip().lower()
     templates = load_templates()
     result = []
     for template_id, tpl in templates.items():
+        params = tpl.get("extra_params", {})
         result.append({
             "id": template_id,
-            "name": tpl["name"],
-            "description": tpl["description"],
-            "extra_params": tpl.get("extra_params", {}),
+            "name": _localize(tpl["name"], lang),
+            "description": _localize(tpl["description"], lang),
+            "extra_params": {k: _localize(v, lang) for k, v in params.items()},
         })
     return result
 

@@ -6,17 +6,19 @@ import { useI18n } from "../i18n.jsx";
 
 // Главная: карточки типов контента. Клик ведёт на страницу генератора.
 export default function HomePage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [templates, setTemplates] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Перезагружаем список при смене языка — названия/описания приходят локализованными.
   useEffect(() => {
-    getTemplates()
+    setLoading(true);
+    getTemplates(lang)
       .then(setTemplates)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [lang]);
 
   if (loading) return <p className="muted">{t("home_loading")}</p>;
 
