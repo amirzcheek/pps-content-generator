@@ -311,6 +311,15 @@ textarea {
   background: var(--accent-soft);
   color: var(--accent);
 }
+.btn-stop {
+  flex: 1;
+  background: #fdecea;
+  color: var(--error);
+  border: 1px solid #f5c6cb;
+}
+.btn-stop:hover {
+  background: #fbd9d4;
+}
 
 /* ── Результат ── */
 .result {

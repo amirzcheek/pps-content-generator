@@ -50,16 +50,19 @@ export function generate(payload) {
 
 // Потоковая генерация (SSE): текст приходит по мере готовности.
 // Колбэки: onMeta({source, model, language}), onChunk(text).
-// Бросает Error при ошибке (в т.ч. событие error из потока).
-export async function generateStream(payload, { onMeta, onChunk } = {}) {
+// signal — AbortSignal для остановки генерации пользователем.
+// При отмене завершается тихо (без ошибки); бросает Error при реальной ошибке.
+export async function generateStream(payload, { onMeta, onChunk, signal } = {}) {
   let res;
   try {
     res = await fetch(API_BASE + "/generate/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal,
     });
   } catch (e) {
+    if (e.name === "AbortError") return; // остановлено пользователем
     throw new Error("Сеть недоступна или backend не запущен. " + e.message);
   }
   if (!res.ok || !res.body) {
@@ -75,9 +78,15 @@ export async function generateStream(payload, { onMeta, onChunk } = {}) {
 
   // Разбираем поток событий SSE: блоки разделены "\n\n", полезная нагрузка в "data:".
   while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    let chunk;
+    try {
+      chunk = await reader.read();
+    } catch (e) {
+      if (e.name === "AbortError") return; // остановлено во время чтения
+      throw e;
+    }
+    if (chunk.done) break;
+    buffer += decoder.decode(chunk.value, { stream: true });
 
     let sep;
     while ((sep = buffer.indexOf("\n\n")) >= 0) {

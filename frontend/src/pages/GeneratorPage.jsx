@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getTemplates, preview, generateStream } from "../api.js";
@@ -45,6 +45,8 @@ export default function GeneratorPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(null); // "preview" | "generate" | null
   const [copied, setCopied] = useState(false);
+  // Контроллер для остановки потоковой генерации пользователем.
+  const abortRef = useRef(null);
 
   // Загружаем описание шаблона (список типов и ищем нужный).
   useEffect(() => {
@@ -116,24 +118,37 @@ export default function GeneratorPage() {
     setBusy("generate");
     setResultMeta("");
     setResult("");
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let metaStr = "";
     try {
       let acc = "";
       await generateStream(payload, {
-        onMeta: (m) =>
-          setResultMeta(
-            `Модель: ${m.model} · язык: ${m.language} · ${m.source}`
-          ),
+        signal: controller.signal,
+        onMeta: (m) => {
+          metaStr = `Модель: ${m.model} · язык: ${m.language} · ${m.source}`;
+          setResultMeta(metaStr);
+        },
         onChunk: (text) => {
           acc += text;
           setResult(acc); // текст наполняется по мере генерации
         },
       });
+      // Пользователь нажал «Остановить» — помечаем, текст оставляем как есть.
+      if (controller.signal.aborted) {
+        setResultMeta(metaStr ? `${metaStr} · остановлено` : "Остановлено");
+      }
     } catch (e) {
       setError(`Ошибка ${e.status ?? ""}: ${e.message}`);
     } finally {
+      abortRef.current = null;
       setBusy(null);
     }
   };
+
+  // Остановить идущую генерацию.
+  const onStop = () => abortRef.current?.abort();
 
   const onCopy = () => {
     navigator.clipboard.writeText(result);
@@ -235,14 +250,20 @@ export default function GeneratorPage() {
             >
               {busy === "preview" ? "Сборка…" : "Предпросмотр промпта"}
             </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={onGenerate}
-              disabled={busy !== null}
-            >
-              {busy === "generate" ? "Генерация…" : "Сгенерировать"}
-            </button>
+            {busy === "generate" ? (
+              <button type="button" className="btn btn-stop" onClick={onStop}>
+                ⏹ Остановить
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={onGenerate}
+                disabled={busy !== null}
+              >
+                Сгенерировать
+              </button>
+            )}
           </div>
         </section>
 

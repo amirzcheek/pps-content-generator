@@ -262,6 +262,16 @@ def _iter_text(stream):
             yield text
 
 
+def _close_quietly(stream):
+    """Закрывает поток к модели, игнорируя ошибки. Нужно, чтобы при отмене
+    клиентом OVMS прекратил генерацию и не тратил CPU."""
+    try:
+        if stream is not None:
+            stream.close()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def generate(template_id, params, temperature=0.7, max_tokens=2048,
              prefer_fallback=False):
     """Полный цикл генерации с резервированием (без потока).
@@ -331,6 +341,7 @@ def stream_generate(template_id, params, temperature=0.7, max_tokens=2048,
 
     last_error = None
     for source, cfg in attempts:
+        stream = None
         try:
             stream = _create_completion(
                 cfg, messages, temperature, max_tokens, stream=True
@@ -341,6 +352,7 @@ def stream_generate(template_id, params, temperature=0.7, max_tokens=2048,
             first = next(iterator, "")
         except Exception as exc:  # noqa: BLE001 — пробуем следующий эндпоинт.
             last_error = exc
+            _close_quietly(stream)
             continue
 
         # Зафиксировали источник — дальше переключений нет.
@@ -354,6 +366,10 @@ def stream_generate(template_id, params, temperature=0.7, max_tokens=2048,
             yield {"type": "done"}
         except Exception as exc:  # noqa: BLE001 — поток оборвался после старта.
             yield {"type": "error", "detail": f"Поток прерван: {exc}"}
+        finally:
+            # Закрываем поток к модели в любом случае, включая отмену клиентом
+            # (GeneratorExit при дисконнекте) — чтобы OVMS перестал генерировать.
+            _close_quietly(stream)
         return
 
     yield {"type": "error",
