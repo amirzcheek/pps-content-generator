@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 from typing import Optional
+from urllib.parse import unquote
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -119,22 +120,31 @@ def auth_session(request: Request):
     Имена заголовков можно переопределить через AUTH_USER_HEADERS / AUTH_ADMIN_HEADER.
     """
     h = request.headers
+    # Платформа отдаёт значения URL-кодированными (encodeURIComponent), поэтому
+    # раскодируем через unquote (пробелы %20 и кириллица %D0.. восстанавливаются).
     user_headers = (
         os.getenv("AUTH_USER_HEADERS")
-        or "remote-name,x-forwarded-user,remote-user,x-auth-user,x-user-name"
+        or "x-user-name,remote-name,x-forwarded-user,remote-user,x-auth-user"
     ).split(",")
     display_name = ""
     for name in user_headers:
         value = h.get(name.strip())
         if value:
-            display_name = value
+            display_name = unquote(value)
+            break
+
+    email = ""
+    for name in ("x-user-email", "x-forwarded-email", "remote-email"):
+        value = h.get(name)
+        if value:
+            email = unquote(value)
             break
 
     admin_header = os.getenv("AUTH_ADMIN_HEADER", "x-is-admin")
     groups = (h.get("remote-groups") or h.get("x-forwarded-groups") or "").lower()
     is_admin = h.get(admin_header, "").lower() in ("1", "true", "yes") or "admin" in groups
 
-    return {"user": {"displayName": display_name, "isAdmin": is_admin}}
+    return {"user": {"displayName": display_name, "email": email, "isAdmin": is_admin}}
 
 
 @app.get("/templates")
